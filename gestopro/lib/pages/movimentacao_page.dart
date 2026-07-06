@@ -34,7 +34,6 @@ class _MovimentacaoPageState extends State<MovimentacaoPage> {
   final _obsCtrl = TextEditingController();
   final _buscaCtrl = TextEditingController();
 
-  bool _showBusca = false;
   List<Produto> _sugestoes = [];
 
   @override
