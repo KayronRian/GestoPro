@@ -18,43 +18,13 @@ class _LoginPageState extends State<LoginPage> {
   bool _obscure = true;
   bool _loading = false;
   String? _erro;
-  bool _autoLoginAttempted = false;
 
   @override
   void initState() {
     super.initState();
-    // Auto-login com credenciais de demo na primeira vez
-    _attemptAutoLogin();
+    // O app apenas carrega e aguarda você digitar email e senha
   }
-
-  Future<void> _attemptAutoLogin() async {
-    if (_autoLoginAttempted) return;
-    _autoLoginAttempted = true;
-    
-    // Aguardar um pouco para garantir que a UI foi renderizada
-    await Future.delayed(const Duration(milliseconds: 500));
-    
-    if (!mounted) return;
-    
-    // Tentar login com credenciais de demo
-    setState(() => _loading = true);
-    final erro = await AppState().login('admin@demo.com.br', 'demo123');
-    if (!mounted) return;
-    
-    if (erro == null) {
-      // Login bem-sucedido
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const HomePage()),
-      );
-    } else {
-      // Falha no login, mostrar tela de login normal
-      setState(() {
-        _loading = false;
-        _erro = 'Credenciais de demo inválidas';
-      });
-    }
-  }
-
+  
   @override
   void dispose() {
     _emailCtrl.dispose();
