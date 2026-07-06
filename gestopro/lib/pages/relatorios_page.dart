@@ -19,7 +19,6 @@ class _RelatoriosPageState extends State<RelatoriosPage>
   List<Movimentacao> _movs = [];
   bool _loading = true;
   late TabController _tabCtrl;
-  int _tab = 0;
 
   // Filtro de período
   DateTime _inicio = DateTime.now().subtract(const Duration(days: 29));
