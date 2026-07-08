@@ -49,9 +49,11 @@ class _CaixaPageState extends State<CaixaPage> {
     }
     setState(() {
       _sugestoes = _produtos
-          .where((p) =>
-              p.nome.toLowerCase().contains(q.toLowerCase()) ||
-              p.codigoBarras.contains(q))
+          .where(
+            (p) =>
+                p.nome.toLowerCase().contains(q.toLowerCase()) ||
+                p.codigoBarras.contains(q),
+          )
           .take(8)
           .toList();
     });
@@ -76,8 +78,10 @@ class _CaixaPageState extends State<CaixaPage> {
       MaterialPageRoute(builder: (_) => const ScannerPage()),
     );
     if (codigo != null && mounted) {
-      final p = await DbService()
-          .findProdutoPorCodigo(AppState().empresaId, codigo);
+      final p = await DbService().findProdutoPorCodigo(
+        AppState().empresaId,
+        codigo,
+      );
       if (p != null) {
         _addProduto(p);
       } else {
@@ -93,8 +97,7 @@ class _CaixaPageState extends State<CaixaPage> {
     }
   }
 
-  double get _subtotal =>
-      _carrinho.fold(0.0, (s, c) => s + c.subtotal);
+  double get _subtotal => _carrinho.fold(0.0, (s, c) => s + c.subtotal);
 
   @override
   Widget build(BuildContext context) {
@@ -150,8 +153,11 @@ class _CaixaPageState extends State<CaixaPage> {
                 color: AppColors.success.withOpacity(0.15),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.check_circle,
-                  color: AppColors.success, size: 24),
+              child: const Icon(
+                Icons.check_circle,
+                color: AppColors.success,
+                size: 24,
+              ),
             ),
             const SizedBox(width: 12),
             const Text('Venda Concluída!'),
@@ -164,8 +170,7 @@ class _CaixaPageState extends State<CaixaPage> {
             Text('Total: ${formatBRL(venda.total)}'),
             Text('Pagamento: ${_formaPagLabel(venda.formaPagamento)}'),
             if (venda.formaPagamento == FormaPagamento.dinheiro)
-              Text(
-                  'Troco: ${formatBRL(venda.valorRecebido - venda.total)}'),
+              Text('Troco: ${formatBRL(venda.valorRecebido - venda.total)}'),
           ],
         ),
         actions: [
@@ -195,6 +200,7 @@ class _CaixaPageState extends State<CaixaPage> {
 }
 
 // ─── Tela principal do caixa ─────────────────────────────────────────────────
+
 class _CaixaView extends StatelessWidget {
   final List<Produto> produtos;
   final List<ItemCarrinho> carrinho;
@@ -220,11 +226,8 @@ class _CaixaView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final maisVendidos = produtos.take(6).toList();
-
     return Column(
       children: [
-        // Header
         Container(
           color: AppColors.primaryDark,
           padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
@@ -242,19 +245,27 @@ class _CaixaView extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
-                  IconButton(
-                    onPressed: onScan,
-                    icon: const Icon(Icons.camera_alt_outlined,
-                        color: Colors.white),
-                    tooltip: 'Escanear produto',
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.accentGreen,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: IconButton(
+                      onPressed: onScan,
+                      icon: const Icon(
+                        Icons.qr_code_scanner,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
                   Stack(
                     children: [
                       IconButton(
                         onPressed: onCarrinho,
-                        icon: const Icon(Icons.shopping_cart_outlined,
-                            color: Colors.white),
-                        tooltip: 'Carrinho',
+                        icon: const Icon(
+                          Icons.shopping_cart_outlined,
+                          color: Colors.white,
+                        ),
                       ),
                       if (carrinho.isNotEmpty)
                         Positioned(
@@ -283,7 +294,6 @@ class _CaixaView extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 12),
-              // Busca
               Container(
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.12),
@@ -297,8 +307,6 @@ class _CaixaView extends StatelessWidget {
                     hintStyle: TextStyle(color: Colors.white54),
                     prefixIcon: Icon(Icons.search, color: Colors.white54),
                     border: InputBorder.none,
-                    contentPadding:
-                        EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   ),
                   onChanged: onBusca,
                 ),
@@ -306,141 +314,81 @@ class _CaixaView extends StatelessWidget {
             ],
           ),
         ),
-
-        // Sugestões de busca
         if (sugestoes.isNotEmpty)
           Container(
             color: Colors.white,
             child: Column(
               children: sugestoes
-                  .map((p) => ListTile(
-                        leading: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(Icons.inventory_2_rounded,
-                              color: AppColors.primary, size: 20),
-                        ),
-                        title: Text(p.nome),
-                        subtitle: Text(formatBRL(p.precoVenda)),
-                        trailing: Text('${p.qtdEstoque} ${p.unidade}',
-                            style: const TextStyle(
-                                color: AppColors.muted, fontSize: 12)),
-                        onTap: () => onAdd(p),
-                      ))
+                  .map(
+                    (p) => ListTile(
+                      title: Text(p.nome),
+                      subtitle: Text(formatBRL(p.precoVenda)),
+                      onTap: () => onAdd(p),
+                    ),
+                  )
                   .toList(),
             ),
           ),
-
-        // Produtos mais vendidos / rápidos
         Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 110),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Acesso rápido',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16,
-                    color: AppColors.text,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                if (produtos.isEmpty)
-                  const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(32),
-                      child: Text(
-                        'Nenhum produto em estoque.\nCadastre produtos no módulo Estoque.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: AppColors.muted),
-                      ),
+                InkWell(
+                  onTap: onScan,
+                  borderRadius: BorderRadius.circular(24),
+                  child: Container(
+                    height: 220,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: AppColors.accentGreen,
+                      borderRadius: BorderRadius.circular(24),
                     ),
-                  )
-                else
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 10,
-                      crossAxisSpacing: 10,
-                      childAspectRatio: 1.5,
-                    ),
-                    itemCount: maisVendidos.length,
-                    itemBuilder: (ctx, i) {
-                      final p = maisVendidos[i];
-                      return InkWell(
-                        onTap: () => onAdd(p),
-                        borderRadius: BorderRadius.circular(14),
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
+                    child: const Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.qr_code_scanner,
+                          color: Colors.white,
+                          size: 100,
+                        ),
+                        SizedBox(height: 12),
+                        Text(
+                          'ESCANEAR PRODUTO',
+                          style: TextStyle(
                             color: Colors.white,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: AppColors.cardBorder),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    width: 32,
-                                    height: 32,
-                                    decoration: BoxDecoration(
-                                      color:
-                                          AppColors.primary.withOpacity(0.1),
-                                      borderRadius:
-                                          BorderRadius.circular(8),
-                                    ),
-                                    child: const Icon(
-                                        Icons.inventory_2_rounded,
-                                        color: AppColors.primary,
-                                        size: 18),
-                                  ),
-                                  const Spacer(),
-                                  const Icon(Icons.add_circle,
-                                      color: AppColors.primary, size: 22),
-                                ],
-                              ),
-                              const Spacer(),
-                              Text(
-                                p.nome,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 12,
-                                  color: AppColors.text,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              Text(
-                                formatBRL(p.precoVenda),
-                                style: const TextStyle(
-                                  color: AppColors.primary,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ],
+                            fontSize: 24,
+                            fontWeight: FontWeight.w900,
                           ),
                         ),
-                      );
-                    },
+                      ],
+                    ),
                   ),
+                ),
+                const SizedBox(height: 24),
+                Expanded(
+                  child: carrinho.isEmpty
+                      ? const Center(child: Text('Nenhum item adicionado'))
+                      : ListView.builder(
+                          itemCount: carrinho.length,
+                          itemBuilder: (context, index) {
+                            final item = carrinho[index];
+                            return Card(
+                              child: ListTile(
+                                title: Text(item.produto.nome),
+                                subtitle: Text(
+                                  '${item.quantidade}x ${formatBRL(item.produto.precoVenda)}',
+                                ),
+                                trailing: Text(formatBRL(item.subtotal)),
+                              ),
+                            );
+                          },
+                        ),
+                ),
               ],
             ),
           ),
         ),
-
-        // Barra inferior com total
         if (carrinho.isNotEmpty)
           Container(
             color: Colors.white,
@@ -448,33 +396,18 @@ class _CaixaView extends StatelessWidget {
             child: Row(
               children: [
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${carrinho.fold(0, (s, c) => s + c.quantidade)} itens',
-                        style: const TextStyle(
-                            color: AppColors.muted, fontSize: 13),
-                      ),
-                      Text(
-                        formatBRL(subtotal),
-                        style: const TextStyle(
-                          color: AppColors.text,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 22,
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    formatBRL(subtotal),
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
                 FilledButton.icon(
                   onPressed: onCarrinho,
                   icon: const Icon(Icons.shopping_cart_outlined),
                   label: const Text('Ver carrinho'),
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 14),
-                  ),
                 ),
               ],
             ),
@@ -515,9 +448,11 @@ class _CarrinhoView extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.shopping_cart_outlined,
-                      size: 64,
-                      color: AppColors.muted.withOpacity(0.4)),
+                  Icon(
+                    Icons.shopping_cart_outlined,
+                    size: 64,
+                    color: AppColors.muted.withOpacity(0.4),
+                  ),
                   const SizedBox(height: 12),
                   const Text(
                     'Carrinho vazio',
@@ -552,14 +487,16 @@ class _CarrinhoView extends StatelessWidget {
                                   color: AppColors.primary.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
-                                child: const Icon(Icons.inventory_2_rounded,
-                                    color: AppColors.primary, size: 22),
+                                child: const Icon(
+                                  Icons.inventory_2_rounded,
+                                  color: AppColors.primary,
+                                  size: 22,
+                                ),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       item.produto.nome,
@@ -571,8 +508,9 @@ class _CarrinhoView extends StatelessWidget {
                                     Text(
                                       formatBRL(item.produto.precoVenda),
                                       style: const TextStyle(
-                                          color: AppColors.muted,
-                                          fontSize: 12),
+                                        color: AppColors.muted,
+                                        fontSize: 12,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -613,8 +551,9 @@ class _CarrinhoView extends StatelessWidget {
                                       }
                                     },
                                     icon: const Icon(
-                                        Icons.add_circle_outline,
-                                        color: AppColors.success),
+                                      Icons.add_circle_outline,
+                                      color: AppColors.success,
+                                    ),
                                     iconSize: 22,
                                   ),
                                 ],
@@ -643,11 +582,14 @@ class _CarrinhoView extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Subtotal',
-                              style: TextStyle(color: AppColors.muted)),
-                          Text(formatBRL(_subtotal),
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w700)),
+                          const Text(
+                            'Subtotal',
+                            style: TextStyle(color: AppColors.muted),
+                          ),
+                          Text(
+                            formatBRL(_subtotal),
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 12),
@@ -658,7 +600,8 @@ class _CarrinhoView extends StatelessWidget {
                           onPressed: onPagar,
                           icon: const Icon(Icons.payment_outlined),
                           label: Text(
-                              'Ir para pagamento · ${formatBRL(_subtotal)}'),
+                            'Ir para pagamento · ${formatBRL(_subtotal)}',
+                          ),
                           style: FilledButton.styleFrom(
                             backgroundColor: AppColors.accentGreen,
                           ),
@@ -715,8 +658,7 @@ class _PagamentoViewState extends State<_PagamentoView> {
   Future<void> _finalizar() async {
     if (_total <= 0) return;
     if (_forma == FormaPagamento.dinheiro) {
-      final rec =
-          double.tryParse(_recebidoCtrl.text.replaceAll(',', '.')) ?? 0;
+      final rec = double.tryParse(_recebidoCtrl.text.replaceAll(',', '.')) ?? 0;
       if (rec < _total) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -737,8 +679,7 @@ class _PagamentoViewState extends State<_PagamentoView> {
         desconto: _desconto,
         formaPagamento: _forma,
         valorRecebido:
-            double.tryParse(_recebidoCtrl.text.replaceAll(',', '.')) ??
-                _total,
+            double.tryParse(_recebidoCtrl.text.replaceAll(',', '.')) ?? _total,
         usuarioNome: state.usuarioNome,
       );
       await DbService().addLog(
@@ -774,35 +715,44 @@ class _PagamentoViewState extends State<_PagamentoView> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SectionTitle(
-                      title: 'Resumo', icon: Icons.receipt_long_outlined),
+                    title: 'Resumo',
+                    icon: Icons.receipt_long_outlined,
+                  ),
                   const SizedBox(height: 12),
-                  ...widget.carrinho.map((c) => Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                '${c.quantidade}x ${c.produto.nome}',
-                                style: const TextStyle(fontSize: 13),
-                              ),
+                  ...widget.carrinho.map(
+                    (c) => Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '${c.quantidade}x ${c.produto.nome}',
+                              style: const TextStyle(fontSize: 13),
                             ),
-                            Text(
-                              formatBRL(c.subtotal),
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 13),
+                          ),
+                          Text(
+                            formatBRL(c.subtotal),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
                             ),
-                          ],
-                        ),
-                      )),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                   const Divider(),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Subtotal',
-                          style: TextStyle(color: AppColors.muted)),
-                      Text(formatBRL(widget.subtotal),
-                          style: const TextStyle(fontWeight: FontWeight.w700)),
+                      const Text(
+                        'Subtotal',
+                        style: TextStyle(color: AppColors.muted),
+                      ),
+                      Text(
+                        formatBRL(widget.subtotal),
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
                     ],
                   ),
                 ],
@@ -816,19 +766,24 @@ class _PagamentoViewState extends State<_PagamentoView> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SectionTitle(
-                      title: 'Desconto', icon: Icons.discount_outlined),
+                    title: 'Desconto',
+                    icon: Icons.discount_outlined,
+                  ),
                   const SizedBox(height: 12),
                   AppTextField(
                     controller: _descontoCtrl,
                     label: 'Desconto (%)',
                     hint: '0',
                     icon: Icons.percent,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     suffix: const Padding(
                       padding: EdgeInsets.all(12),
-                      child: Text('%',
-                          style: TextStyle(fontWeight: FontWeight.w700)),
+                      child: Text(
+                        '%',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -837,8 +792,10 @@ class _PagamentoViewState extends State<_PagamentoView> {
                     builder: (_, __, ___) => Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Total com desconto:',
-                            style: TextStyle(color: AppColors.muted)),
+                        const Text(
+                          'Total com desconto:',
+                          style: TextStyle(color: AppColors.muted),
+                        ),
                         Text(
                           formatBRL(_total),
                           style: const TextStyle(
@@ -861,8 +818,9 @@ class _PagamentoViewState extends State<_PagamentoView> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SectionTitle(
-                      title: 'Forma de Pagamento',
-                      icon: Icons.payment_outlined),
+                    title: 'Forma de Pagamento',
+                    icon: Icons.payment_outlined,
+                  ),
                   const SizedBox(height: 12),
                   Wrap(
                     spacing: 8,
@@ -878,11 +836,11 @@ class _PagamentoViewState extends State<_PagamentoView> {
                           color: selected ? Colors.white : AppColors.text,
                           fontWeight: FontWeight.w700,
                         ),
-                        avatar: Icon(_formaIcon(f),
-                            color: selected
-                                ? Colors.white
-                                : AppColors.muted,
-                            size: 18),
+                        avatar: Icon(
+                          _formaIcon(f),
+                          color: selected ? Colors.white : AppColors.muted,
+                          size: 18,
+                        ),
                       );
                     }).toList(),
                   ),
@@ -894,7 +852,8 @@ class _PagamentoViewState extends State<_PagamentoView> {
                       hint: '0,00',
                       icon: Icons.attach_money,
                       keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true),
+                        decimal: true,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     ValueListenableBuilder(
@@ -904,8 +863,10 @@ class _PagamentoViewState extends State<_PagamentoView> {
                         return Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text('Troco:',
-                                style: TextStyle(color: AppColors.muted)),
+                            const Text(
+                              'Troco:',
+                              style: TextStyle(color: AppColors.muted),
+                            ),
                             Text(
                               formatBRL(troco > 0 ? troco : 0),
                               style: TextStyle(
@@ -937,12 +898,16 @@ class _PagamentoViewState extends State<_PagamentoView> {
                         width: 22,
                         height: 22,
                         child: CircularProgressIndicator(
-                            color: Colors.white, strokeWidth: 2.5),
+                          color: Colors.white,
+                          strokeWidth: 2.5,
+                        ),
                       )
                     : Text(
                         'Confirmar venda · ${formatBRL(_total)}',
                         style: const TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.w800),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.accentGreen,
