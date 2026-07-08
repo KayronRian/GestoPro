@@ -211,12 +211,42 @@ class _ProdutoFormPageState extends State<ProdutoFormPage> {
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: AppTextField(
-                            controller: _unidadeCtrl,
-                            label: 'Unidade',
-                            hint: 'UN, KG, L...',
-                          ),
-                        ),
+  child: DropdownButtonFormField<String>(
+    value: _unidadeCtrl.text,
+    decoration: InputDecoration(
+      labelText: 'Unidade',
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+    ),
+    items: const [
+      'UN',
+      'KG',
+      'G',
+      'TON',
+      'L',
+      'ML',
+      'CX',
+      'PCT',
+      'FD',
+      'M',
+      'CM',
+      'MM',
+      'PAR',
+      'KIT',
+    ].map((u) {
+      return DropdownMenuItem(
+        value: u,
+        child: Text(u),
+      );
+    }).toList(),
+    onChanged: (value) {
+      if (value != null) {
+        _unidadeCtrl.text = value;
+      }
+    },
+  ),
+),
                       ],
                     ),
                   ],
