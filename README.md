@@ -79,9 +79,14 @@ Este projeto foi desenvolvido como sistema de gestão para pequenos empreendedor
 - Emissão de notas fiscais
 - Controle financeiro completo
 - Dashboard com gráficos
-- Aplicativo Android e Web
 
 ---
+
+## Desenvolvedores:
+
+- Kayron Rian
+- Caroline frança
+- Maria Bernardes
 
 ## Licença
 
