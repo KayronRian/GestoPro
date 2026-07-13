@@ -1,3 +1,4 @@
+// Arquivo Principal
 import 'package:flutter/material.dart';
 import 'services/app_state.dart';
 import 'services/db_service.dart';
@@ -5,12 +6,13 @@ import 'utils/theme.dart';
 import 'pages/login_page.dart';
 import 'pages/home_page.dart';
 
+/// Função principal que inicia a execução do programa.
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Inicializar SharedPreferences antes de qualquer coisa
-  await DbService().init();
-  runApp(const GestoProApp());
+  await DbService().init();   // Inicializa o serviço de banco de dados
+  runApp(const GestoProApp());  // Inicia o aplicativo chamando o widget raiz.
 }
+
 
 class GestoProApp extends StatelessWidget {
   const GestoProApp({super.key});
@@ -20,39 +22,36 @@ class GestoProApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'GestoPro',
-      theme: buildTheme(),
+      theme: buildTheme(),       // Aplica o tema visual personalizado definido no arquivo utils/theme.dart.
       home: const _AppBootstrap(),
     );
   }
 }
 
-/// Decide qual tela mostrar ao iniciar o app:
-/// 1. Se há sessão ativa → HomePage
-/// 2. Se não há admin cadastrado → SetupPage
-/// 3. Caso contrário → LoginPage
+/// [_AppBootstrap] é um widget intermediário que decide qual tela o usuário deve ver primeiro.
 class _AppBootstrap extends StatefulWidget {
   const _AppBootstrap();
-
   @override
   State<_AppBootstrap> createState() => _AppBootstrapState();
 }
-
 class _AppBootstrapState extends State<_AppBootstrap> {
   bool _loading = true;
   Widget? _destination;
-
   @override
   void initState() {
     super.initState();
     _bootstrap();
   }
 
+  /// Processo de verificação de sessão e dados iniciais.
   Future<void> _bootstrap() async {
     final state = AppState();
+    // Inicializa o estado global (verifica se há usuário logado na memória).
     await state.init();
+    
     final db = DbService();
 
-    // Criar admin de demo automaticamente se não existir
+    // o sistema cria um usuário "Admin Demo" automaticamente para permitir o primeiro acesso.
     final hasAdmin = await db.hasAdminSetup();
     if (!hasAdmin) {
       await db.setupAdmin(
@@ -69,6 +68,7 @@ class _AppBootstrapState extends State<_AppBootstrap> {
       );
     }
 
+        // Define o destino com base no estado de login do usuário.
     Widget dest;
     if (state.logado) {
       dest = const HomePage();
@@ -76,6 +76,7 @@ class _AppBootstrapState extends State<_AppBootstrap> {
       dest = const LoginPage();
     }
 
+        // Atualiza a interface: remove o carregamento e define a tela de destino.
     if (mounted) {
       setState(() {
         _destination = dest;
@@ -84,6 +85,7 @@ class _AppBootstrapState extends State<_AppBootstrap> {
     }
   }
 
+  //carregamento do app
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -120,6 +122,7 @@ class _AppBootstrapState extends State<_AppBootstrap> {
       );
     }
 
+    // Após o carregamento, retorna a tela de destino definida (Home ou Login).
     return _destination!;
   }
 }
