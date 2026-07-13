@@ -251,12 +251,15 @@ class _TabUsuarios extends StatelessWidget {
                       children: [
                         Row(
                           children: [
-                            Text(
-                              u.nome,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 14,
-                                color: AppColors.text,
+                            Expanded(
+                              child: Text(
+                                u.nome,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 14,
+                                  color: AppColors.text,
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                             const SizedBox(width: 8),
