@@ -85,7 +85,6 @@ class _MovimentacaoPageState extends State<MovimentacaoPage> {
       if (p != null) {
         setState(() {
           _produto = p;
-          _showBusca = false;
         });
       } else {
         if (mounted) {
@@ -265,7 +264,6 @@ class _MovimentacaoPageState extends State<MovimentacaoPage> {
                             TextButton(
                               onPressed: () => setState(() {
                                 _produto = null;
-                                _showBusca = true;
                               }),
                               child: const Text('Trocar'),
                             ),
@@ -300,7 +298,6 @@ class _MovimentacaoPageState extends State<MovimentacaoPage> {
                                           _produto = p;
                                           _buscaCtrl.clear();
                                           _sugestoes = [];
-                                          _showBusca = false;
                                         });
                                       },
                                     ))
