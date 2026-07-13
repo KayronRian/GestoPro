@@ -18,6 +18,8 @@ class _RelatoriosPageState extends State<RelatoriosPage>
   List<Produto> _produtos = [];
   List<Movimentacao> _movs = [];
   bool _loading = true;
+
+  int _tab = 0;
   late TabController _tabCtrl;
 
   // Filtro de período
