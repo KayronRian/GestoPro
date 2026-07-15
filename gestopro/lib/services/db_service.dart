@@ -1,22 +1,15 @@
-// Lógica de serviço
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../models/models.dart';
 
-// Gerador de IDs únicos (UUID v4) para novos registros.
 const _uuid = Uuid();
 
-/// Função utilitária para transformar uma senha em texto puro em um hash SHA-256.
 String hashSenha(String senha) =>
     sha256.convert(utf8.encode(senha)).toString();
 
-/// [DbService] gerencia toda a persistência de dados do aplicativo.
-/// Como este é um app focado em simplicidade e funcionamento offline/local,
-/// ele utiliza o [SharedPreferences] para simular um banco de dados NoSQL.
 class DbService {
-  // Padrão Singleton para garantir que todas as telas usem a mesma conexão com os dados.
   static final DbService _instance = DbService._();
   factory DbService() => _instance;
   DbService._();
@@ -24,7 +17,6 @@ class DbService {
   late SharedPreferences _prefs;
   bool _initialized = false;
 
-  /// Inicializa a biblioteca de armazenamento local.
   Future<void> init() async {
     if (_initialized) return;
     _prefs = await SharedPreferences.getInstance();
@@ -32,8 +24,6 @@ class DbService {
   }
 
   // ─── Empresa ────────────────────────────────────────────────────────────────
-  // Métodos para buscar e salvar os dados cadastrais da empresa.
-
   Future<Empresa?> getEmpresa(String id) async {
     final s = _prefs.getString('empresa_$id');
     if (s == null) return null;
@@ -45,9 +35,6 @@ class DbService {
   }
 
   // ─── Usuários ────────────────────────────────────────────────────────────────
-  // Gerenciamento de login, cadastro e permissões de usuários.
-
-  /// Retorna todos os usuários vinculados a uma empresa específica.
   Future<List<Usuario>> getUsuarios(String empresaId) async {
     final ids = _prefs.getStringList('usuarios_$empresaId') ?? [];
     final result = <Usuario>[];
@@ -58,7 +45,6 @@ class DbService {
     return result;
   }
 
-  /// Salva ou atualiza um usuário e garante que seu ID esteja na lista da empresa.
   Future<void> saveUsuario(Usuario u) async {
     await _prefs.setString('usuario_${u.id}', u.toJson());
     final ids = _prefs.getStringList('usuarios_${u.empresaId}') ?? [];
@@ -75,7 +61,6 @@ class DbService {
     await _prefs.setStringList('usuarios_$empresaId', ids);
   }
 
-  /// Busca um usuário pelo e-mail (usado no processo de login).
   Future<Usuario?> findUsuarioByEmail(String email) async {
     final allKeys = _prefs.getKeys();
     for (final key in allKeys) {
@@ -90,7 +75,6 @@ class DbService {
     return null;
   }
 
-  /// Verifica as credenciais e realiza o login se o hash da senha bater.
   Future<Usuario?> login(String email, String senha) async {
     final u = await findUsuarioByEmail(email);
     if (u == null || !u.ativo) return null;
@@ -101,8 +85,6 @@ class DbService {
   }
 
   // ─── Produtos ────────────────────────────────────────────────────────────────
-  // Controle do catálogo de produtos e estoque.
-
   Future<List<Produto>> getProdutos(String empresaId) async {
     final ids = _prefs.getStringList('produtos_$empresaId') ?? [];
     final result = <Produto>[];
@@ -129,7 +111,6 @@ class DbService {
     await _prefs.setStringList('produtos_$empresaId', ids);
   }
 
-  /// Busca um produto pelo código de barras (usado no Scanner e no PDV).
   Future<Produto?> findProdutoPorCodigo(
       String empresaId, String codigo) async {
     final produtos = await getProdutos(empresaId);
@@ -141,8 +122,6 @@ class DbService {
   }
 
   // ─── Movimentações ───────────────────────────────────────────────────────────
-  // Registro histórico de todas as entradas e saídas de mercadorias.
-
   Future<List<Movimentacao>> getMovimentacoes(String empresaId) async {
     final ids = _prefs.getStringList('movs_$empresaId') ?? [];
     final result = <Movimentacao>[];
@@ -150,12 +129,25 @@ class DbService {
       final s = _prefs.getString('mov_$id');
       if (s != null) result.add(Movimentacao.fromJson(s));
     }
-    // Ordena as movimentações da mais recente para a mais antiga.
     result.sort((a, b) => b.data.compareTo(a.data));
     return result;
   }
 
-  /// Adiciona itens ao estoque e gera um registro de movimentação do tipo 'entrada'.
+  Future<List<Movimentacao>> getMovimentacoesPorProduto(
+      String empresaId, String produtoId) async {
+    final all = await getMovimentacoes(empresaId);
+    return all.where((m) => m.produtoId == produtoId).toList();
+  }
+
+  Future<void> saveMovimentacao(Movimentacao m) async {
+    await _prefs.setString('mov_${m.id}', m.toJson());
+    final ids = _prefs.getStringList('movs_${m.empresaId}') ?? [];
+    if (!ids.contains(m.id)) {
+      ids.add(m.id);
+      await _prefs.setStringList('movs_${m.empresaId}', ids);
+    }
+  }
+
   Future<void> registrarEntrada({
     required String empresaId,
     required Produto produto,
@@ -171,7 +163,6 @@ class DbService {
       produto.precoCusto = precoCusto;
     }
     await saveProduto(produto);
-    
     final mov = Movimentacao(
       id: _uuid.v4(),
       empresaId: empresaId,
@@ -189,7 +180,6 @@ class DbService {
     await saveMovimentacao(mov);
   }
 
-  /// Remove itens do estoque (ajuste manual ou perda) e gera registro de 'saída'.
   Future<bool> registrarSaida({
     required String empresaId,
     required Produto produto,
@@ -198,10 +188,9 @@ class DbService {
     String? observacoes,
     required String usuarioNome,
   }) async {
-    if (produto.qtdEstoque < quantidade) return false; // Impede estoque negativo.
+    if (produto.qtdEstoque < quantidade) return false;
     produto.qtdEstoque -= quantidade;
     await saveProduto(produto);
-    
     final mov = Movimentacao(
       id: _uuid.v4(),
       empresaId: empresaId,
@@ -219,9 +208,26 @@ class DbService {
   }
 
   // ─── Vendas ──────────────────────────────────────────────────────────────────
-  // Processamento de vendas realizadas no PDV (Ponto de Venda).
+  Future<List<Venda>> getVendas(String empresaId) async {
+    final ids = _prefs.getStringList('vendas_$empresaId') ?? [];
+    final result = <Venda>[];
+    for (final id in ids) {
+      final s = _prefs.getString('venda_$id');
+      if (s != null) result.add(Venda.fromJson(s));
+    }
+    result.sort((a, b) => b.data.compareTo(a.data));
+    return result;
+  }
 
-  /// Finaliza uma venda, calcula totais, gera o registro de venda e baixa o estoque.
+  Future<void> saveVenda(Venda v) async {
+    await _prefs.setString('venda_${v.id}', v.toJson());
+    final ids = _prefs.getStringList('vendas_${v.empresaId}') ?? [];
+    if (!ids.contains(v.id)) {
+      ids.add(v.id);
+      await _prefs.setStringList('vendas_${v.empresaId}', ids);
+    }
+  }
+
   Future<Venda> finalizarVenda({
     required String empresaId,
     required List<ItemCarrinho> carrinho,
@@ -232,7 +238,6 @@ class DbService {
   }) async {
     final subtotal = carrinho.fold(0.0, (s, i) => s + i.subtotal);
     final total = subtotal * (1 - desconto / 100);
-    
     final itens = carrinho
         .map((c) => ItemVenda(
               produtoId: c.produto.id,
@@ -257,13 +262,11 @@ class DbService {
 
     await saveVenda(venda);
 
-    // Baixa automática do estoque para cada item vendido.
+    // Baixar estoque
     for (final item in carrinho) {
       item.produto.qtdEstoque -= item.quantidade;
       if (item.produto.qtdEstoque < 0) item.produto.qtdEstoque = 0;
       await saveProduto(item.produto);
-      
-      // Registra a saída no histórico de movimentações.
       final mov = Movimentacao(
         id: _uuid.v4(),
         empresaId: empresaId,
@@ -282,7 +285,16 @@ class DbService {
   }
 
   // ─── Auditoria ───────────────────────────────────────────────────────────────
-  // Registro de ações importantes realizadas no sistema para segurança.
+  Future<List<LogAuditoria>> getLogs(String empresaId) async {
+    final ids = _prefs.getStringList('logs_$empresaId') ?? [];
+    final result = <LogAuditoria>[];
+    for (final id in ids) {
+      final s = _prefs.getString('log_$id');
+      if (s != null) result.add(LogAuditoria.fromJson(s));
+    }
+    result.sort((a, b) => b.data.compareTo(a.data));
+    return result;
+  }
 
   Future<void> addLog({
     required String empresaId,
@@ -305,9 +317,11 @@ class DbService {
   }
 
   // ─── Setup inicial ───────────────────────────────────────────────────────────
-  // Configurações realizadas na primeira vez que o app é aberto.
+  Future<bool> hasAdminSetup() async {
+    final keys = _prefs.getKeys();
+    return keys.any((k) => k.startsWith('usuario_'));
+  }
 
-  /// Cria a estrutura inicial da empresa e do primeiro administrador.
   Future<void> setupAdmin({
     required String nomeEmpresa,
     required String cnpj,
@@ -343,13 +357,16 @@ class DbService {
     );
     await saveUsuario(admin);
 
+    // Salvar referência do admin principal
     await _prefs.setString('admin_email', emailAdmin);
     await _prefs.setString('admin_empresa_id', empresaId);
   }
 
-  // ─── Sessão ──────────────────────────────────────────────────────────────────
-  // Controle de persistência de login (Manter conectado).
+  Future<String?> getAdminEmpresaId() async {
+    return _prefs.getString('admin_empresa_id');
+  }
 
+  // ─── Sessão ──────────────────────────────────────────────────────────────────
   Future<void> saveSession(Usuario u) async {
     await _prefs.setString('session_user_id', u.id);
     await _prefs.setString('session_empresa_id', u.empresaId);
@@ -366,5 +383,25 @@ class DbService {
     final s = _prefs.getString('usuario_$userId');
     if (s == null) return null;
     return Usuario.fromJson(s);
+  }
+
+  // ─── Novo usuário ────────────────────────────────────────────────────────────
+  Future<Usuario> criarUsuario({
+    required String empresaId,
+    required String nome,
+    required String email,
+    required String senha,
+    required UserRole role,
+  }) async {
+    final u = Usuario(
+      id: _uuid.v4(),
+      empresaId: empresaId,
+      nome: nome,
+      email: email,
+      senhaHash: hashSenha(senha),
+      role: role,
+    );
+    await saveUsuario(u);
+    return u;
   }
 }
