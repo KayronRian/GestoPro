@@ -8,15 +8,21 @@ import 'pages/home_page.dart';
 
 /// Função principal que inicia a execução do programa.
 void main() async {
+  // Garante que o binding do Flutter esteja pronto para operações assíncronas.
+  // Necessário antes de usar plugins/serviços no main().
   WidgetsFlutterBinding.ensureInitialized();
   await DbService().init();   // Inicializa o serviço de banco de dados
   runApp(const GestoProApp());  // Inicia o aplicativo chamando o widget raiz.
 }
 
 
+// Widget raiz do app; centraliza configuração global.
+// Mantém somente a estrutura MaterialApp.
 class GestoProApp extends StatelessWidget {
   const GestoProApp({super.key});
 
+  // Método build do app monta o MaterialApp.
+  // Define título, tema e widget inicial (_AppBootstrap).
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -31,9 +37,13 @@ class GestoProApp extends StatelessWidget {
 /// [_AppBootstrap] é um widget intermediário que decide qual tela o usuário deve ver primeiro.
 class _AppBootstrap extends StatefulWidget {
   const _AppBootstrap();
+  // Conecta o StatefulWidget ao seu objeto State.
+  // Padrão que isola lógica de estado em _AppBootstrapState.
   @override
   State<_AppBootstrap> createState() => _AppBootstrapState();
 }
+// State que decide a rota inicial e controla carregamento.
+// Gerencia _loading e o destino _destination.
 class _AppBootstrapState extends State<_AppBootstrap> {
   bool _loading = true;
   Widget? _destination;
@@ -49,6 +59,8 @@ class _AppBootstrapState extends State<_AppBootstrap> {
     // Inicializa o estado global (verifica se há usuário logado na memória).
     await state.init();
     
+    // Obtém o serviço de banco para checar/setup de dados iniciais.
+    // Usado para verificar admin e realizar seed.
     final db = DbService();
 
     // o sistema cria um usuário "Admin Demo" automaticamente para permitir o primeiro acesso.
@@ -70,6 +82,8 @@ class _AppBootstrapState extends State<_AppBootstrap> {
 
         // Define o destino com base no estado de login do usuário.
     Widget dest;
+    // Redireciona com base na autenticação: Home se logado, senão Login.
+    // Decisão central da navegação inicial.
     if (state.logado) {
       dest = const HomePage();
     } else {
@@ -77,6 +91,8 @@ class _AppBootstrapState extends State<_AppBootstrap> {
     }
 
         // Atualiza a interface: remove o carregamento e define a tela de destino.
+    // Evita setState após descarte do widget verificando mounted.
+    // Atualiza destino e encerra a tela de loading.
     if (mounted) {
       setState(() {
         _destination = dest;
@@ -86,6 +102,8 @@ class _AppBootstrapState extends State<_AppBootstrap> {
   }
 
   //carregamento do app
+  // Build do bootstrap: mostra splash enquanto _loading for true.
+  // Após pronto, devolve a tela definida em _destination.
   @override
   Widget build(BuildContext context) {
     if (_loading) {

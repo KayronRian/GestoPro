@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+// Importa serviço de estado global (sessão/perfil de usuário). // Usado para consultar isAdmin e executar logout.
 import '../services/app_state.dart';
 import '../utils/theme.dart';
 import 'dashboard_page.dart';
@@ -8,16 +9,21 @@ import 'relatorios_page.dart';
 import 'usuarios_page.dart';
 import 'login_page.dart';
 
+// Tela principal com navegação por abas; é Stateful. // Mantém o índice da aba ativa entre reconstruções.
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
+  // Conecta o StatefulWidget ao seu State privado. // Mantém a lógica e estado separados da UI declarativa.
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
+// State responsável por gerenciar o índice e construir o layout.
 class _HomePageState extends State<HomePage> {
+  // Índice da aba selecionada, usado para navegação.
   int _index = 0;
 
+  // Páginas fixas alinhadas à ordem dos botões. // Com IndexedStack, permanecem montadas preservando estado.
   final _pages = const [
     DashboardPage(),
     EstoquePage(),
@@ -26,8 +32,10 @@ class _HomePageState extends State<HomePage> {
     UsuariosPage(),
   ];
 
+  // Método build monta Scaffold com conteúdo e barra inferior. // Adapta a navegação conforme o papel do usuário.
   @override
   Widget build(BuildContext context) {
+    // Consulta no AppState (singleton) se o usuário é admin. // Define quais itens da barra inferior serão exibidos.
     final isAdmin = AppState().isAdmin;
     return Scaffold(
       body: SafeArea(
@@ -51,6 +59,7 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
+// Barra inferior customizada com suporte a FAB central. // Expõe índice atual e callback para trocar de aba.
 class _BottomBar extends StatelessWidget {
   final int index;
   final bool isAdmin;
@@ -62,6 +71,7 @@ class _BottomBar extends StatelessWidget {
     required this.onChanged,
   });
 
+  // Constrói BottomAppBar com notch e sombra suave. // Distribui itens em Row e aplica estilo do tema.
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -132,6 +142,7 @@ class _BottomBar extends StatelessWidget {
     );
   }
 
+  // Exibe confirmação e realiza o fluxo de logout. // Chama AppState().logout e navega ao Login com mounted check.
   void _showLogout(BuildContext context) {
     showDialog(
       context: context,
@@ -161,6 +172,7 @@ class _BottomBar extends StatelessWidget {
   }
 }
 
+// Item reutilizável de navegação (ícone + rótulo). // Recebe estado selecionado e callback de toque.
 class _NavItem extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -174,6 +186,7 @@ class _NavItem extends StatelessWidget {
     required this.onTap,
   });
 
+  // Constrói o item variando cor pelo estado selecionado. // InkWell fornece feedback e área de clique segura.
   @override
   Widget build(BuildContext context) {
     final color = selected ? AppColors.primaryDark : const Color(0xFF9AA5B5);

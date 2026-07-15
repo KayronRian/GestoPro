@@ -8,6 +8,8 @@ import 'scanner_page.dart';
 
 const _uuid = Uuid();
 
+// StatefulWidget da página de cadastro/edição de produto.
+// Recebe um Produto opcional para entrar em modo de edição.
 class ProdutoFormPage extends StatefulWidget {
   final Produto? produto;
   const ProdutoFormPage({super.key, this.produto});
@@ -16,7 +18,10 @@ class ProdutoFormPage extends StatefulWidget {
   State<ProdutoFormPage> createState() => _ProdutoFormPageState();
 }
 
+// State que gerencia controladores, estado de loading e data de validade.
+// Centraliza a lógica do formulário.
 class _ProdutoFormPageState extends State<ProdutoFormPage> {
+  // Chave do Form usada para validar e acessar o estado do formulário.
   final _formKey = GlobalKey<FormState>();
   bool _loading = false;
 
@@ -32,6 +37,8 @@ class _ProdutoFormPageState extends State<ProdutoFormPage> {
   late final TextEditingController _minCtrl;
   DateTime? _validade;
 
+  // initState pré-carrega os campos com dados do produto (se houver).
+  // Define padrões como unidade, estoques e validade.
   @override
   void initState() {
     super.initState();
@@ -53,6 +60,8 @@ class _ProdutoFormPageState extends State<ProdutoFormPage> {
     _validade = p?.dataValidade;
   }
 
+  // Libera todos os TextEditingController ao destruir o State.
+  // Evita vazamento de memória.
   @override
   void dispose() {
     for (final c in [
@@ -64,14 +73,20 @@ class _ProdutoFormPageState extends State<ProdutoFormPage> {
     super.dispose();
   }
 
+  // Método assíncrono que persiste o produto (criação/edição).
+  // Também controla feedback visual e navegação após salvar.
   Future<void> _salvar() async {
+    // Dispara validações do Form; se inválido, interrompe o fluxo de salvamento.
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _loading = true);
     try {
+      // Instancia serviços: DbService (persistência) e AppState (contexto atual).
+      // Define flag isEdit com base na presença de produto.
       final db = DbService();
       final state = AppState();
       final isEdit = widget.produto != null;
 
+      // Constrói o objeto de domínio Produto a partir dos campos do formulário.
       final produto = Produto(
         id: widget.produto?.id ?? _uuid.v4(),
         empresaId: state.empresaId,
@@ -88,7 +103,9 @@ class _ProdutoFormPageState extends State<ProdutoFormPage> {
         dataValidade: _validade,
       );
 
+      // Persiste o produto no banco através do serviço de dados.
       await db.saveProduto(produto);
+      // Registra um log de auditoria com ação contextual (cadastrar/editar).
       await db.addLog(
         empresaId: state.empresaId,
         usuarioNome: state.usuarioNome,
@@ -97,6 +114,7 @@ class _ProdutoFormPageState extends State<ProdutoFormPage> {
             '${isEdit ? 'Produto editado' : 'Produto cadastrado'}: ${produto.nome}',
       );
 
+      // Garante que o widget está montado antes de mostrar SnackBar e navegar.
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -113,6 +131,8 @@ class _ProdutoFormPageState extends State<ProdutoFormPage> {
     }
   }
 
+  // Abre a página de scanner e aguarda o código lido via Navigator.push.
+  // Retorna uma String com o código ou null.
   Future<void> _scanCodigo() async {
     final codigo = await Navigator.push<String>(
       context,
@@ -123,6 +143,7 @@ class _ProdutoFormPageState extends State<ProdutoFormPage> {
     }
   }
 
+  // Constrói a interface; ajusta rótulos conforme modo edição (isEdit).
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.produto != null;
@@ -134,6 +155,7 @@ class _ProdutoFormPageState extends State<ProdutoFormPage> {
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
+          // Form associado a _formKey para validação e submissão centralizada.
           key: _formKey,
           child: Column(
             children: [
@@ -254,6 +276,7 @@ class _ProdutoFormPageState extends State<ProdutoFormPage> {
               ),
               const SizedBox(height: 14),
 
+              // Seção "Preços": campos para custo e venda com validação do preço de venda.
               AppCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -333,6 +356,7 @@ class _ProdutoFormPageState extends State<ProdutoFormPage> {
                     ),
                     const SizedBox(height: 12),
                     InkWell(
+                      // Callback do InkWell: abre o date picker e atualiza _validade no estado.
                       onTap: () async {
                         final d = await showDatePicker(
                           context: context,
@@ -386,6 +410,7 @@ class _ProdutoFormPageState extends State<ProdutoFormPage> {
                 width: double.infinity,
                 height: 52,
                 child: FilledButton(
+                  // Botão principal: desativa quando _loading e chama _salvar ao pressionar.
                   onPressed: _loading ? null : _salvar,
                   child: _loading
                       ? const SizedBox(

@@ -5,6 +5,8 @@ import '../services/app_state.dart';
 import '../services/db_service.dart';
 import '../utils/theme.dart';
 
+// StatefulWidget da tela de relatórios com três abas principais.
+// Orquestra filtros de período e a alimentação dos widgets de cada aba.
 class RelatoriosPage extends StatefulWidget {
   const RelatoriosPage({super.key});
 
@@ -12,6 +14,8 @@ class RelatoriosPage extends StatefulWidget {
   State<RelatoriosPage> createState() => _RelatoriosPageState();
 }
 
+// State usa SingleTickerProvider para animar o TabController.
+// Centraliza dados carregados, filtros e agregações (KPIs).
 class _RelatoriosPageState extends State<RelatoriosPage>
     with SingleTickerProviderStateMixin {
   List<Venda> _vendas = [];
@@ -26,6 +30,8 @@ class _RelatoriosPageState extends State<RelatoriosPage>
   DateTime _inicio = DateTime.now().subtract(const Duration(days: 29));
   DateTime _fim = DateTime.now();
 
+  // initState configura o TabController e observa mudança de aba.
+  // Também inicia o carregamento assíncrono dos dados.
   @override
   void initState() {
     super.initState();
@@ -33,21 +39,27 @@ class _RelatoriosPageState extends State<RelatoriosPage>
     _tabCtrl.addListener(() {
       if (!_tabCtrl.indexIsChanging) setState(() => _tab = _tabCtrl.index);
     });
+    // Dispara a rotina que busca dados no banco e popula o estado.
     _load();
   }
 
+  // Libera o TabController no ciclo de vida para evitar leaks.
   @override
   void dispose() {
     _tabCtrl.dispose();
     super.dispose();
   }
 
+  // Função assíncrona que consulta DbService e AppState.
+  // Ao finalizar, atualiza listas locais e remove o loading.
   Future<void> _load() async {
     final db = DbService();
     final state = AppState();
     final vendas = await db.getVendas(state.empresaId);
     final produtos = await db.getProdutos(state.empresaId);
     final movs = await db.getMovimentacoes(state.empresaId);
+    // Verificação de segurança: só atualiza o estado se o widget existir.
+    // Evita exceção de setState após dispose.
     if (mounted) {
       setState(() {
         _vendas = vendas;
@@ -58,6 +70,8 @@ class _RelatoriosPageState extends State<RelatoriosPage>
     }
   }
 
+  // Filtra vendas pelo intervalo selecionado (fim inclusivo via +1 dia).
+  // Base para todos os cálculos e gráficos desta tela.
   List<Venda> get _vendasFiltradas => _vendas.where((v) {
         final d = v.data;
         return !d.isBefore(_inicio) &&
@@ -67,6 +81,8 @@ class _RelatoriosPageState extends State<RelatoriosPage>
   double get _totalVendas =>
       _vendasFiltradas.fold(0.0, (s, v) => s + v.total);
 
+  // Estima o custo somando (preço de custo x quantidade) de cada item.
+  // Percorre vendas filtradas e resolve produto por produtoId.
   double get _totalCusto {
     double custo = 0;
     for (final v in _vendasFiltradas) {
@@ -80,6 +96,8 @@ class _RelatoriosPageState extends State<RelatoriosPage>
 
   double get _lucroEstimado => _totalVendas - _totalCusto;
 
+  // Agrega o total dos últimos 7 dias, formatando chave como dd/MM.
+  // Alimenta diretamente o gráfico de barras diário.
   Map<String, double> get _vendasPorDia {
     final map = <String, double>{};
     for (var i = 0; i < 7; i++) {
@@ -96,6 +114,8 @@ class _RelatoriosPageState extends State<RelatoriosPage>
     return map;
   }
 
+  // Totaliza vendas por categoria do produto; fallback para 'Outros'.
+  // Acumula subtotais dos itens nas respectivas categorias.
   Map<String, double> get _vendasPorCategoria {
     final map = <String, double>{};
     for (final v in _vendasFiltradas) {
@@ -108,6 +128,7 @@ class _RelatoriosPageState extends State<RelatoriosPage>
     return map;
   }
 
+  // Agrupa o valor total por forma de pagamento usando rótulos legíveis.
   Map<String, double> get _vendasPorForma {
     final map = <String, double>{};
     for (final v in _vendasFiltradas) {
@@ -117,6 +138,8 @@ class _RelatoriosPageState extends State<RelatoriosPage>
     return map;
   }
 
+  // Constrói cabeçalho (título, seletor de período, TabBar) e conteúdo.
+  // O TabBarView alterna as seções conforme o TabController.
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -166,6 +189,8 @@ class _RelatoriosPageState extends State<RelatoriosPage>
           ),
         ),
 
+        // Área de conteúdo: exibe loader durante _loading ou as três abas.
+        // Mantém o estado de cada aba via o mesmo TabController.
         Expanded(
           child: _loading
               ? const Center(child: CircularProgressIndicator())
@@ -193,6 +218,7 @@ class _RelatoriosPageState extends State<RelatoriosPage>
     );
   }
 
+  // Abre o seletor de intervalo de datas e atualiza o filtro escolhido.
   Future<void> _selecionarPeriodo() async {
     final range = await showDateRangePicker(
       context: context,
@@ -208,6 +234,7 @@ class _RelatoriosPageState extends State<RelatoriosPage>
     }
   }
 
+  // Converte o enum FormaPagamento em texto exibível na interface.
   String _formaNome(FormaPagamento f) {
     switch (f) {
       case FormaPagamento.dinheiro:
@@ -225,6 +252,8 @@ class _RelatoriosPageState extends State<RelatoriosPage>
 }
 
 // ─── Aba de Vendas ────────────────────────────────────────────────────────────
+// Widget da aba Vendas: mostra KPIs, gráfico diário, pizza por categoria
+// e distribuição por forma de pagamento.
 class _TabVendas extends StatelessWidget {
   final List<Venda> vendas;
   final Map<String, double> vendasPorDia;
@@ -271,6 +300,8 @@ class _TabVendas extends StatelessWidget {
           const SizedBox(height: 14),
 
           // Gráfico de barras por dia
+          // Card com gráfico de barras: define maxY pelo pico e tooltip em BRL.
+          // Cada grupo representa um dia dentro dos últimos 7.
           AppCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -357,6 +388,7 @@ class _TabVendas extends StatelessWidget {
           const SizedBox(height: 14),
 
           // Gráfico por categoria
+          // Exibe o gráfico de pizza e a legenda apenas se houver categorias.
           if (vendasPorCategoria.isNotEmpty)
             AppCard(
               child: Column(
@@ -469,6 +501,8 @@ class _TabVendas extends StatelessWidget {
     );
   }
 
+  // Transforma o mapa em seções do PieChart e calcula o percentual.
+  // O título de cada fatia mostra a participação no total.
   List<PieChartSectionData> _buildPieSections(Map<String, double> data) {
     final total = data.values.fold(0.0, (s, v) => s + v);
     return data.values.toList().asMap().entries.map((e) {
@@ -487,6 +521,7 @@ class _TabVendas extends StatelessWidget {
     }).toList();
   }
 
+  // Paleta cíclica para cores das fatias; evita repetir padrão visual.
   Color _pieColor(int i) {
     const colors = [
       AppColors.primary,
@@ -509,6 +544,8 @@ class _TabEstoque extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // KPIs de estoque derivados da lista de produtos (quantidade e valor).
+    // Abastecem os cartões de indicador no topo da aba.
     final esgotados = produtos.where((p) => p.esgotado).length;
     final baixo = produtos.where((p) => p.estoqueAbaixoMinimo).length;
     final totalItens = produtos.fold(0, (s, p) => s + p.qtdEstoque);
@@ -576,6 +613,8 @@ class _TabEstoque extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 ...(() {
+                  // Copia e ordena produtos por menor estoque para destacar críticos.
+                  // Seleciona os 10 com menor quantidade disponível.
                   final sorted = [...produtos]
                     ..sort((a, b) => a.qtdEstoque.compareTo(b.qtdEstoque));
                   return sorted.take(10).map((p) => Padding(
@@ -632,6 +671,8 @@ class _TabEstoque extends StatelessWidget {
                   icon: Icons.history,
                 ),
                 const SizedBox(height: 12),
+                // Condicional: placeholder se não houver movimentações ou lista as 15 últimas.
+                // Diferencia entrada/saída com cor e ícone.
                 if (movs.isEmpty)
                   const Center(
                     child: Padding(
@@ -710,6 +751,8 @@ class _TabEstoque extends StatelessWidget {
 }
 
 // ─── Aba Financeiro ───────────────────────────────────────────────────────────
+// Aba Financeiro: consolida receita, custo e lucro bruto estimado.
+// Também lista últimas vendas do período filtrado.
 class _TabFinanceiro extends StatelessWidget {
   final double totalVendas;
   final double totalCusto;
@@ -725,6 +768,7 @@ class _TabFinanceiro extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Calcula a margem bruta (%) usada no texto e na barra de progresso.
     final margem = totalVendas > 0 ? lucro / totalVendas * 100 : 0.0;
 
     return SingleChildScrollView(
@@ -810,6 +854,7 @@ class _TabFinanceiro extends StatelessWidget {
                   icon: Icons.receipt_long_outlined,
                 ),
                 const SizedBox(height: 12),
+                // Mostra aviso quando não há vendas; caso contrário, lista as 20 mais recentes.
                 if (vendas.isEmpty)
                   const Center(
                     child: Padding(
@@ -876,6 +921,8 @@ class _TabFinanceiro extends StatelessWidget {
   }
 }
 
+// Componente reutilizável para KPIs rápidos (rótulo, valor e ícone).
+// Recebe uma cor temática para estilo e ênfase visual.
 class _IndicatorCard extends StatelessWidget {
   final String label;
   final String value;

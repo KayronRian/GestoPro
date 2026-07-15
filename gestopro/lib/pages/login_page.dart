@@ -4,14 +4,17 @@ import '../utils/theme.dart';
 import 'setup_page.dart';
 import 'home_page.dart';
 
+// Página de login como StatefulWidget para manter estado de inputs e UI.
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
+  // Cria o objeto de estado que controlará a tela e suas interações.
   @override
   State<LoginPage> createState() => _LoginPageState();
 }
 
 class _LoginPageState extends State<LoginPage> {
+  // Chave do Form para validar todos os campos de forma coordenada.
   final _formKey = GlobalKey<FormState>();
   final _emailCtrl = TextEditingController();
   final _senhaCtrl = TextEditingController();
@@ -32,24 +35,29 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
+  // Método de envio: valida, chama login e atualiza estado conforme retorno.
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() {
       _loading = true;
       _erro = null;
     });
+    // Chamada ao serviço AppState.login; devolve String de erro ou null.
     final erro = await AppState().login(_emailCtrl.text.trim(), _senhaCtrl.text);
+    // Proteção: só continua se o widget ainda está montado na árvore.
     if (!mounted) return;
     setState(() => _loading = false);
     if (erro != null) {
       setState(() => _erro = erro);
     } else {
+      // Login OK: substitui a rota atual e navega para a HomePage.
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const HomePage()),
       );
     }
   }
 
+  // Monta o layout geral com gradiente, logo e área do formulário.
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -92,11 +100,13 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                     const SizedBox(height: 24),
+                    // Card que abriga o Form; inicia a seção validável do login.
                     AppCard(
                       child: Form(
                         key: _formKey,
                         child: Column(
                           children: [
+                            // Campo de e-mail com teclado adequado e regra: não pode ficar vazio.
                             AppTextField(
                               controller: _emailCtrl,
                               label: 'E-mail',
@@ -107,6 +117,7 @@ class _LoginPageState extends State<LoginPage> {
                                   (v ?? '').trim().isEmpty ? 'Informe o e-mail' : null,
                             ),
                             const SizedBox(height: 14),
+                            // Campo de senha; obscurece texto e permite alternar via ícone.
                             AppTextField(
                               controller: _senhaCtrl,
                               label: 'Senha',
@@ -125,6 +136,7 @@ class _LoginPageState extends State<LoginPage> {
                               validator: (v) =>
                                   (v ?? '').trim().isEmpty ? 'Informe a senha' : null,
                             ),
+                            // Bloco condicional: mostra aviso quando _erro possui mensagem.
                             if (_erro != null) ...[
                               const SizedBox(height: 12),
                               Container(
@@ -152,6 +164,8 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                             ],
                             const SizedBox(height: 16),
+                            // Área do botão principal: largura total e altura fixa.
+                            // O FilledButton alterna entre spinner e texto conforme _loading.
                             SizedBox(
                               width: double.infinity,
                               height: 52,
@@ -180,6 +194,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                     const SizedBox(height: 16),
+                    // Ação "Primeira vez?": abre SetupPage para cadastro inicial.
                     TextButton(
                       onPressed: () {
                         Navigator.of(context).push(

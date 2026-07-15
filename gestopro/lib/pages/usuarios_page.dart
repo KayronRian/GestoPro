@@ -4,6 +4,7 @@ import '../services/app_state.dart';
 import '../services/db_service.dart';
 import '../utils/theme.dart';
 
+// Página principal para gerenciar usuários e auditoria.
 class UsuariosPage extends StatefulWidget {
   const UsuariosPage({super.key});
 
@@ -11,13 +12,16 @@ class UsuariosPage extends StatefulWidget {
   State<UsuariosPage> createState() => _UsuariosPageState();
 }
 
+// State que mantém dados e usa SingleTickerProvider para o TabController.
 class _UsuariosPageState extends State<UsuariosPage>
     with SingleTickerProviderStateMixin {
+  // Estados locais: listas de usuários/logs e flag _loading.
   List<Usuario> _usuarios = [];
   List<LogAuditoria> _logs = [];
   bool _loading = true;
   late TabController _tabCtrl;
 
+  // Inicializa o TabController (2 abas) e dispara _load().
   @override
   void initState() {
     super.initState();
@@ -25,12 +29,14 @@ class _UsuariosPageState extends State<UsuariosPage>
     _load();
   }
 
+  // Descarta o TabController para evitar vazamento de animação.
   @override
   void dispose() {
     _tabCtrl.dispose();
     super.dispose();
   }
 
+  // Carrega usuários e logs da empresa atual via DbService e AppState.
   Future<void> _load() async {
     final db = DbService();
     final state = AppState();
@@ -45,10 +51,12 @@ class _UsuariosPageState extends State<UsuariosPage>
     }
   }
 
+  // Constrói a UI; obtém isAdmin do AppState para habilitar ações.
   @override
   Widget build(BuildContext context) {
     final isAdmin = AppState().isAdmin;
 
+    // Retorna Column com cabeçalho, TabBar e conteúdo em abas.
     return Column(
       children: [
         // Header
@@ -115,6 +123,7 @@ class _UsuariosPageState extends State<UsuariosPage>
     );
   }
 
+  // Alterna ativo/inativo do usuário, salva no DB e registra auditoria.
   Future<void> _toggleAtivo(Usuario u) async {
     u.ativo = !u.ativo;
     await DbService().saveUsuario(u);
@@ -127,6 +136,7 @@ class _UsuariosPageState extends State<UsuariosPage>
     _load();
   }
 
+  // Abre diálogo de confirmação; se aceitar, prossegue com exclusão.
   Future<void> _deletar(Usuario u) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -145,6 +155,7 @@ class _UsuariosPageState extends State<UsuariosPage>
         ],
       ),
     );
+    // Somente exclui se o usuário confirmar explicitamente no diálogo.
     if (confirm == true) {
       await DbService().deleteUsuario(AppState().empresaId, u.id);
       await DbService().addLog(
@@ -157,6 +168,7 @@ class _UsuariosPageState extends State<UsuariosPage>
     }
   }
 
+  // Exibe o formulário em bottom sheet; ao salvar, fecha e recarrega.
   void _showFormUsuario(BuildContext context, {Usuario? usuario}) {
     showModalBottomSheet(
       context: context,
@@ -175,6 +187,7 @@ class _UsuariosPageState extends State<UsuariosPage>
   }
 }
 
+// Widget da aba de usuários: lista, controles e callbacks externos.
 class _TabUsuarios extends StatelessWidget {
   final List<Usuario> usuarios;
   final bool isAdmin;
@@ -211,6 +224,7 @@ class _TabUsuarios extends StatelessWidget {
       );
     }
 
+    // Habilita pull-to-refresh chamando onRefresh para recarregar dados.
     return RefreshIndicator(
       onRefresh: () async => onRefresh(),
       child: ListView.builder(
@@ -342,6 +356,7 @@ class _TabUsuarios extends StatelessWidget {
   }
 }
 
+// Widget da aba de auditoria: recebe a lista de logs.
 class _TabAuditoria extends StatelessWidget {
   final List<LogAuditoria> logs;
 
@@ -358,6 +373,7 @@ class _TabAuditoria extends StatelessWidget {
       );
     }
 
+    // Retorna ListView.builder para renderizar o histórico de logs.
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 110),
       itemCount: logs.length,
@@ -420,6 +436,7 @@ class _TabAuditoria extends StatelessWidget {
 }
 
 // ─── Formulário de usuário ────────────────────────────────────────────────────
+// Formulário de criar/editar usuário; notifica via onSalvo ao concluir.
 class _FormUsuario extends StatefulWidget {
   final Usuario? usuario;
   final VoidCallback onSalvo;
@@ -430,6 +447,7 @@ class _FormUsuario extends StatefulWidget {
   State<_FormUsuario> createState() => _FormUsuarioState();
 }
 
+// Estado do formulário: formKey, loading, controllers, role e visibilidade.
 class _FormUsuarioState extends State<_FormUsuario> {
   final _formKey = GlobalKey<FormState>();
   bool _loading = false;
@@ -440,6 +458,7 @@ class _FormUsuarioState extends State<_FormUsuario> {
   UserRole _role = UserRole.funcionario;
   bool _obscure = true;
 
+  // Preenche campos iniciais conforme widget.usuario (modo edição).
   @override
   void initState() {
     super.initState();
@@ -450,6 +469,7 @@ class _FormUsuarioState extends State<_FormUsuario> {
     _role = u?.role ?? UserRole.funcionario;
   }
 
+  // Descarta os TextEditingControllers para evitar vazamentos.
   @override
   void dispose() {
     _nomeCtrl.dispose();
@@ -458,6 +478,8 @@ class _FormUsuarioState extends State<_FormUsuario> {
     super.dispose();
   }
 
+  // Fluxo de salvamento: valida, decide edição/criação e persiste no DB.
+  // Também registra auditoria e prepara feedback (SnackBar/onSalvo).
   Future<void> _salvar() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _loading = true);
@@ -466,6 +488,7 @@ class _FormUsuarioState extends State<_FormUsuario> {
       final state = AppState();
       final isEdit = widget.usuario != null;
 
+      // Ramo de edição: atualiza dados e troca senha se campo não estiver vazio.
       if (isEdit) {
         final u = widget.usuario!;
         u.nome = _nomeCtrl.text.trim();
@@ -482,6 +505,7 @@ class _FormUsuarioState extends State<_FormUsuario> {
           descricao: 'Usuário "${u.nome}" editado',
         );
       } else {
+        // Ramo de criação: cria usuário com nome, e-mail, senha e role.
         final u = await db.criarUsuario(
           empresaId: state.empresaId,
           nome: _nomeCtrl.text.trim(),
@@ -513,6 +537,7 @@ class _FormUsuarioState extends State<_FormUsuario> {
     }
   }
 
+  // Monta o conteúdo do sheet: título, campos, seleção de perfil e ação.
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.usuario != null;
@@ -645,6 +670,7 @@ class _FormUsuarioState extends State<_FormUsuario> {
   }
 }
 
+// Card para escolher o perfil; visual muda se estiver selecionado.
 class _RoleCard extends StatelessWidget {
   final UserRole role;
   final bool selected;

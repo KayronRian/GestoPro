@@ -3,6 +3,7 @@ import '../services/db_service.dart';
 import '../utils/theme.dart';
 import 'login_page.dart';
 
+// Tela de configuração inicial; StatefulWidget para manter estado entre etapas.
 class SetupPage extends StatefulWidget {
   const SetupPage({super.key});
 
@@ -10,11 +11,14 @@ class SetupPage extends StatefulWidget {
   State<SetupPage> createState() => _SetupPageState();
 }
 
+// State responsável por controlar formulário, passo atual e loading.
 class _SetupPageState extends State<SetupPage> {
   final _formKey = GlobalKey<FormState>();
+  // Estados de UI: _step conduz o wizard e _loading indica operação em curso.
   int _step = 0;
   bool _loading = false;
 
+  // Controladores dos campos da empresa para leitura/validação dos textos.
   // Empresa
   final _nomeEmpresaCtrl = TextEditingController();
   final _cnpjCtrl = TextEditingController();
@@ -24,13 +28,16 @@ class _SetupPageState extends State<SetupPage> {
   final _cidadeCtrl = TextEditingController();
   final _estadoCtrl = TextEditingController();
 
+  // Controladores dos campos do administrador usados no passo 2.
   // Admin
   final _nomeAdminCtrl = TextEditingController();
   final _emailAdminCtrl = TextEditingController();
   final _senhaCtrl = TextEditingController();
   final _confirmarSenhaCtrl = TextEditingController();
+  // Alterna visibilidade dos campos de senha (obscure/visível).
   bool _obscure = true;
 
+  // initState roda uma vez e pré-carrega os controladores com valores iniciais.
   @override
   void initState() {
     super.initState();
@@ -48,6 +55,7 @@ class _SetupPageState extends State<SetupPage> {
     _confirmarSenhaCtrl.text = 'admin123';
   }
 
+  // Libera os recursos dos TextEditingController usando dispose em lote.
   @override
   void dispose() {
     for (final c in [
@@ -60,6 +68,7 @@ class _SetupPageState extends State<SetupPage> {
     super.dispose();
   }
 
+  // Avança para o passo 1 após validar nome da empresa; usa foco e SnackBar.
   void _handleNextStep() {
     FocusScope.of(context).unfocus();
     Future.microtask(() {
@@ -77,6 +86,7 @@ class _SetupPageState extends State<SetupPage> {
     });
   }
 
+  // Finaliza o cadastro: valida admin e senhas, chama serviço, feedback e navega.
   Future<void> _finalizar() async {
     // Validação manual dos campos obrigatórios do admin
     if (_nomeAdminCtrl.text.trim().isEmpty ||
@@ -101,6 +111,7 @@ class _SetupPageState extends State<SetupPage> {
     }
     setState(() => _loading = true);
     try {
+      // Chamada ao serviço de dados para criar empresa e usuário admin no banco.
       await DbService().setupAdmin(
         nomeEmpresa: _nomeEmpresaCtrl.text.trim(),
         cnpj: _cnpjCtrl.text.trim(),
@@ -120,6 +131,7 @@ class _SetupPageState extends State<SetupPage> {
           backgroundColor: AppColors.success,
         ),
       );
+      // Após sucesso, navega substituindo pela tela de Login (não permite voltar).
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const LoginPage()),
       );
@@ -128,6 +140,7 @@ class _SetupPageState extends State<SetupPage> {
     }
   }
 
+  // Monta a UI: Scaffold com gradiente e formulário centralizado em duas etapas.
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -212,6 +225,7 @@ class _SetupPageState extends State<SetupPage> {
                       ),
                     ),
                     const SizedBox(height: 32),
+                    // Barra de ações: voltar (quando possível) e botão principal do fluxo.
                     Row(
                       children: [
                         if (_step > 0)
@@ -232,6 +246,7 @@ class _SetupPageState extends State<SetupPage> {
                           flex: 2,
                           child: SizedBox(
                             height: 52,
+                            // Callback do botão: avança do passo 0 ou executa _finalizar; respeita _loading.
                             child: FilledButton(
                               onPressed: _loading
                                   ? null
@@ -295,6 +310,7 @@ class _SetupPageState extends State<SetupPage> {
   }
 }
 
+// Widget indicador de etapa (dot); estiliza ativo/inativo conforme progresso.
 class _StepDot extends StatelessWidget {
   final bool active;
   final String label;
@@ -321,6 +337,7 @@ class _StepDot extends StatelessWidget {
   }
 }
 
+// Passo 1 do formulário: coleta dados da empresa e expõe onSubmit.
 class _StepEmpresa extends StatelessWidget {
   final TextEditingController nomeCtrl, cnpjCtrl, telefoneCtrl, emailCtrl,
       enderecoCtrl, cidadeCtrl, estadoCtrl;
@@ -408,6 +425,7 @@ class _StepEmpresa extends StatelessWidget {
   }
 }
 
+// Passo 2 do formulário: dados do admin e controle de visibilidade da senha.
 class _StepAdmin extends StatelessWidget {
   final TextEditingController nomeCtrl, emailCtrl, senhaCtrl, confirmarCtrl;
   final bool obscure;
@@ -460,6 +478,7 @@ class _StepAdmin extends StatelessWidget {
           },
         ),
         const SizedBox(height: 12),
+        // Campo de senha com toggle de visibilidade e validação de comprimento mínimo.
         AppTextField(
           controller: senhaCtrl,
           label: 'Senha *',

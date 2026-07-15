@@ -5,6 +5,8 @@ import '../services/db_service.dart';
 import '../utils/theme.dart';
 import 'scanner_page.dart';
 
+// StatefulWidget da tela de movimentação de estoque (entrada/saída).
+// Recebe o tipo e um produto inicial opcional para pré-seleção.
 class MovimentacaoPage extends StatefulWidget {
   final TipoMovimentacao tipo;
   final Produto? produtoInicial;
@@ -15,17 +17,24 @@ class MovimentacaoPage extends StatefulWidget {
     this.produtoInicial,
   });
 
+  // createState liga o widget ao objeto de estado que manterá os dados.
+  // Padrão do Flutter para widgets dinâmicos.
   @override
   State<MovimentacaoPage> createState() => _MovimentacaoPageState();
 }
 
+// State responsável por campos do formulário e regras da movimentação.
+// Centraliza busca de produtos e chamadas ao serviço de BD.
 class _MovimentacaoPageState extends State<MovimentacaoPage> {
+  // Chave do Form para acionar validação dos campos antes de salvar.
   final _formKey = GlobalKey<FormState>();
   bool _loading = false;
 
   Produto? _produto;
   List<Produto> _produtos = [];
 
+  // Controladores dos campos de texto usados no formulário.
+  // Permitem ler/alterar valores e limpar inputs.
   final _qtdCtrl = TextEditingController(text: '1');
   final _nfCtrl = TextEditingController();
   final _fornecedorCtrl = TextEditingController();
@@ -36,6 +45,8 @@ class _MovimentacaoPageState extends State<MovimentacaoPage> {
 
   List<Produto> _sugestoes = [];
 
+  // initState inicializa com o produto passado e carrega a lista do BD.
+  // Executa uma única vez ao montar o widget.
   @override
   void initState() {
     super.initState();
@@ -43,6 +54,8 @@ class _MovimentacaoPageState extends State<MovimentacaoPage> {
     _load();
   }
 
+  // Libera todos os TextEditingControllers ao descartar a tela.
+  // Evita vazamentos de memória.
   @override
   void dispose() {
     for (final c in [
@@ -54,11 +67,15 @@ class _MovimentacaoPageState extends State<MovimentacaoPage> {
     super.dispose();
   }
 
+  // Carrega produtos da empresa no DbService para popular sugestões.
+  // Atualiza o estado apenas se o widget ainda estiver montado.
   Future<void> _load() async {
     final prods = await DbService().getProdutos(AppState().empresaId);
     if (mounted) setState(() => _produtos = prods);
   }
 
+  // Filtra produtos por nome ou código de barras conforme a busca.
+  // Limita a lista a 6 sugestões para manter a UI leve.
   void _buscar(String q) {
     if (q.isEmpty) {
       setState(() => _sugestoes = []);
@@ -74,6 +91,8 @@ class _MovimentacaoPageState extends State<MovimentacaoPage> {
     });
   }
 
+  // Abre a ScannerPage, lê o código e procura o produto no BD.
+  // Exibe aviso se não encontrar e seleciona se houver match.
   Future<void> _scanCodigo() async {
     final codigo = await Navigator.push<String>(
       context,
@@ -99,6 +118,8 @@ class _MovimentacaoPageState extends State<MovimentacaoPage> {
     }
   }
 
+  // Fluxo principal: valida, registra a entrada/saída e gera feedback.
+  // Concentra regras de negócio e persistência.
   Future<void> _salvar() async {
     if (_produto == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -111,6 +132,7 @@ class _MovimentacaoPageState extends State<MovimentacaoPage> {
     }
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
+    // Ativa indicador de carregamento para evitar cliques repetidos.
     setState(() => _loading = true);
     try {
       final db = DbService();
@@ -128,6 +150,8 @@ class _MovimentacaoPageState extends State<MovimentacaoPage> {
       }
 
       bool ok = true;
+      // Decide qual operação executar com base no tipo de movimentação.
+      // Entrada registra dados extras; saída pode falhar por estoque.
       if (widget.tipo == TipoMovimentacao.entrada) {
         await db.registrarEntrada(
           empresaId: state.empresaId,
@@ -157,6 +181,8 @@ class _MovimentacaoPageState extends State<MovimentacaoPage> {
         );
       }
 
+      // Trata falha de saída quando não há estoque suficiente.
+      // Mostra feedback de erro e interrompe o fluxo.
       if (!ok) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -169,6 +195,8 @@ class _MovimentacaoPageState extends State<MovimentacaoPage> {
         return;
       }
 
+      // Registra log de auditoria com usuário, ação e descrição.
+      // Útil para histórico e rastreabilidade.
       await db.addLog(
         empresaId: state.empresaId,
         usuarioNome: state.usuarioNome,
@@ -179,6 +207,8 @@ class _MovimentacaoPageState extends State<MovimentacaoPage> {
             '${widget.tipo == TipoMovimentacao.entrada ? 'Entrada' : 'Saída'} de $qtd ${_produto!.unidade} de "${_produto!.nome}"',
       );
 
+      // Após sucesso, mostra Snackbar e volta para a tela anterior.
+      // Usa mounted para garantir que o contexto ainda é válido.
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -193,12 +223,17 @@ class _MovimentacaoPageState extends State<MovimentacaoPage> {
         Navigator.pop(context);
       }
     } finally {
+      // Finaliza o carregamento no bloco finally, mesmo em erro.
+      // Checa mounted antes de chamar setState.
       if (mounted) setState(() => _loading = false);
     }
   }
 
+  // build desenha a UI adaptando textos e cores ao tipo selecionado.
+  // Usa isEntrada para alternar seções específicas.
   @override
   Widget build(BuildContext context) {
+    // Flag derivada do tipo para personalizar labels, cores e ações.
     final isEntrada = widget.tipo == TipoMovimentacao.entrada;
 
     return Scaffold(

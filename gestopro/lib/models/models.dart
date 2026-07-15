@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 // ─── Empresa ────────────────────────────────────────────────────────────────
+// Modelo de domínio para dados cadastrais da empresa.
 class Empresa {
   final String id;
   String nome;
@@ -22,6 +23,7 @@ class Empresa {
     this.estado = '',
   });
 
+  // toMap serializa o objeto para persistência/transferência (chaves estáveis).
   Map<String, dynamic> toMap() => {
         'id': id,
         'nome': nome,
@@ -33,6 +35,7 @@ class Empresa {
         'estado': estado,
       };
 
+  // fromMap reconstrói a Empresa; usa valores padrão para campos ausentes.
   factory Empresa.fromMap(Map<String, dynamic> m) => Empresa(
         id: m['id'],
         nome: m['nome'],
@@ -49,8 +52,10 @@ class Empresa {
 }
 
 // ─── Usuário ─────────────────────────────────────────────────────────────────
+// Enum de perfis para controle de permissões e visibilidade no sistema.
 enum UserRole { admin, funcionario }
 
+// Entidade de usuário com identidade, credenciais e status de acesso.
 class Usuario {
   final String id;
   String empresaId;
@@ -83,6 +88,7 @@ class Usuario {
         'ultimoAcesso': ultimoAcesso?.toIso8601String(),
       };
 
+  // fromMap recria o usuário e garante role válido e data parseada com segurança.
   factory Usuario.fromMap(Map<String, dynamic> m) => Usuario(
         id: m['id'],
         empresaId: m['empresaId'],
@@ -102,6 +108,7 @@ class Usuario {
 }
 
 // ─── Produto ─────────────────────────────────────────────────────────────────
+// Entidade principal de estoque: atributos comerciais e de inventário.
 class Produto {
   final String id;
   String empresaId;
@@ -135,9 +142,11 @@ class Produto {
     this.ativo = true,
   });
 
+  // Calcula margem percentual considerando custo e preço de venda.
   double get margem =>
       precoVenda > 0 ? ((precoVenda - precoCusto) / precoVenda * 100) : 0;
 
+  // Sinaliza baixo estoque: <= mínimo, mas ainda disponível.
   bool get estoqueAbaixoMinimo => qtdEstoque <= estoqueMinimo && qtdEstoque > 0;
   bool get esgotado => qtdEstoque == 0;
 
@@ -158,6 +167,7 @@ class Produto {
         'ativo': ativo,
       };
 
+  // fromMap normaliza tipos numéricos/datas e aplica defaults de campos.
   factory Produto.fromMap(Map<String, dynamic> m) => Produto(
         id: m['id'],
         empresaId: m['empresaId'],
@@ -182,8 +192,10 @@ class Produto {
 }
 
 // ─── Movimentação de Estoque ──────────────────────────────────────────────────
+// Tipos de movimentação que impactam o saldo do estoque.
 enum TipoMovimentacao { entrada, saida, ajuste }
 
+// Registro de movimentação com contexto (origem, usuário, data).
 class Movimentacao {
   final String id;
   String empresaId;
@@ -231,6 +243,7 @@ class Movimentacao {
         'data': data.toIso8601String(),
       };
 
+  // fromMap traduz strings para enum e reconstrói metadados da movimentação.
   factory Movimentacao.fromMap(Map<String, dynamic> m) => Movimentacao(
         id: m['id'],
         empresaId: m['empresaId'],
@@ -259,12 +272,15 @@ class ItemCarrinho {
 
   ItemCarrinho({required this.produto, this.quantidade = 1});
 
+  // Regra de negócio do carrinho: subtotal do item = preço x quantidade.
   double get subtotal => produto.precoVenda * quantidade;
 }
 
 // ─── Venda ────────────────────────────────────────────────────────────────────
+// Enum das formas de pagamento aceitas no PDV.
 enum FormaPagamento { dinheiro, pix, debito, credito, misto }
 
+// Agregado Venda: itens vendidos, totais, pagamento e autor da operação.
 class Venda {
   final String id;
   String empresaId;
@@ -303,6 +319,7 @@ class Venda {
         'data': data.toIso8601String(),
       };
 
+  // fromMap reidrata a venda, convertendo lista de itens e enum de pagamento.
   factory Venda.fromMap(Map<String, dynamic> m) => Venda(
         id: m['id'],
         empresaId: m['empresaId'],
@@ -322,6 +339,7 @@ class Venda {
   factory Venda.fromJson(String s) => Venda.fromMap(jsonDecode(s));
 }
 
+// Item desnormalizado da venda, persistido junto ao cabeçalho.
 class ItemVenda {
   String produtoId;
   String produtoNome;
@@ -353,6 +371,7 @@ class ItemVenda {
 }
 
 // ─── Log de Auditoria ─────────────────────────────────────────────────────────
+// Entidade de auditoria para rastrear ações e cumprir conformidade.
 class LogAuditoria {
   final String id;
   String empresaId;

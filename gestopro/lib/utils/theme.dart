@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+// Paleta de cores centralizada da aplicação; constantes reutilizáveis em temas e widgets.
 class AppColors {
   static const primary = Color(0xFF2B64E7);
   static const primaryDark = Color(0xFF183A87);
@@ -14,7 +15,10 @@ class AppColors {
   static const white = Colors.white;
 }
 
+// Constrói o ThemeData global da app.
+// Define Material 3, tipografia, cores e estilos padrões.
 ThemeData buildTheme() {
+  // Retorna ThemeData agregando ColorScheme, AppBarTheme, botões e campos de texto.
   return ThemeData(
     useMaterial3: true,
     colorScheme: ColorScheme.fromSeed(
@@ -58,6 +62,7 @@ ThemeData buildTheme() {
 
 // ─── Widgets utilitários ─────────────────────────────────────────────────────
 
+// Card reutilizável com padding, borda e sombra padronizados.
 class AppCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry? padding;
@@ -65,6 +70,8 @@ class AppCard extends StatelessWidget {
 
   const AppCard({super.key, required this.child, this.padding, this.color});
 
+  // Constrói o Container estilizado e expansível do card.
+  // Recebe qualquer child para compor o conteúdo.
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -87,6 +94,7 @@ class AppCard extends StatelessWidget {
   }
 }
 
+// Badge de status compacto; cor comunica estado e texto rotula.
 class StatusBadge extends StatelessWidget {
   final String label;
   final Color color;
@@ -113,6 +121,7 @@ class StatusBadge extends StatelessWidget {
   }
 }
 
+// Cabeçalho de seção com título, ícone opcional e trailing customizável.
 class SectionTitle extends StatelessWidget {
   final String title;
   final IconData? icon;
@@ -127,6 +136,8 @@ class SectionTitle extends StatelessWidget {
     this.trailing,
   });
 
+  // Layout em Row; ícone e trailing aparecem somente se informados.
+  // Expanded garante que o título ocupe o espaço central.
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -151,10 +162,13 @@ class SectionTitle extends StatelessWidget {
   }
 }
 
+// Marca visual do app; tamanho configurável via parâmetro size.
 class LogoMark extends StatelessWidget {
   final double size;
   const LogoMark({super.key, this.size = 72});
 
+  // Usa Stack/Positioned para compor ícones proporcionais ao size.
+  // Aplica cor primária, cantos arredondados e sombra suave.
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -197,6 +211,8 @@ class LogoMark extends StatelessWidget {
   }
 }
 
+// Wrapper de TextFormField com API comum: controller, rótulos, obscure,
+// validação e callbacks (onTap, onFieldSubmitted).
 class AppTextField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
@@ -227,6 +243,8 @@ class AppTextField extends StatelessWidget {
     this.onFieldSubmitted,
   });
 
+  // Encaminha validator/keyboardType/obscure e ajusta maxLines dinamicamente.
+  // Decoração usa label/hint e ícones prefix/suffix integrados ao tema.
   @override
   Widget build(BuildContext context) {
     return TextFormField(
@@ -248,6 +266,7 @@ class AppTextField extends StatelessWidget {
   }
 }
 
+// Formata valores em Real brasileiro (R$) com 2 casas e vírgula decimal.
 String formatBRL(double value) {
   return 'R\$ ${value.toStringAsFixed(2).replaceAll('.', ',')}';
 }
@@ -256,6 +275,7 @@ String formatDate(DateTime d) {
   return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
 }
 
+// Combina data (dd/MM/yyyy) com hora (HH:mm) reaproveitando formatDate.
 String formatDateTime(DateTime d) {
   return '${formatDate(d)} ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 }

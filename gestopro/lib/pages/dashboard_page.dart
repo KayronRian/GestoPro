@@ -6,6 +6,7 @@ import '../services/db_service.dart';
 import '../utils/theme.dart';
 import 'login_page.dart';
 
+// Página do painel principal; Stateful para reagir a mudanças nos dados.
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
 
@@ -13,22 +14,27 @@ class DashboardPage extends StatefulWidget {
   State<DashboardPage> createState() => _DashboardPageState();
 }
 
+// State da Dashboard: mantém dados e calcula métricas exibidas na UI.
 class _DashboardPageState extends State<DashboardPage> {
+  // Estados locais com produtos, vendas e flag de carregamento para controlar a tela.
   List<Produto> _produtos = [];
   List<Venda> _vendas = [];
   bool _loading = true;
 
+  // Ciclo de vida: ao iniciar, dispara o carregamento inicial de dados.
   @override
   void initState() {
     super.initState();
     _load();
   }
 
+  // Busca produtos e vendas via serviços (AppState/DbService) de forma assíncrona.
   Future<void> _load() async {
     final state = AppState();
     final db = DbService();
     final produtos = await db.getProdutos(state.empresaId);
     final vendas = await db.getVendas(state.empresaId);
+    // Garante que o widget ainda está montado antes de chamar setState.
     if (mounted) {
       setState(() {
         _produtos = produtos;
@@ -38,6 +44,7 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
+  // Soma o total das vendas de hoje filtrando por ano/mês/dia atuais.
   double get _vendasHoje {
     final hoje = DateTime.now();
     return _vendas
@@ -48,6 +55,7 @@ class _DashboardPageState extends State<DashboardPage> {
         .fold(0.0, (s, v) => s + v.total);
   }
 
+  // Acumula o total de vendas do mês corrente.
   double get _vendasMes {
     final hoje = DateTime.now();
     return _vendas
@@ -55,13 +63,16 @@ class _DashboardPageState extends State<DashboardPage> {
         .fold(0.0, (s, v) => s + v.total);
   }
 
+  // Quantidade de vendas realizadas (tamanho da lista).
   int get _vendasRealizadas => _vendas.length;
   int get _totalEstoque => _produtos.fold(0, (s, p) => s + p.qtdEstoque);
 
+  // Compila produtos em alerta: esgotado, baixo estoque ou vencimento próximo.
   List<Produto> get _alertas {
     final result = <Produto>[];
     for (final p in _produtos) {
       if (p.esgotado || p.estoqueAbaixoMinimo) result.add(p);
+      // Trata validade: inclui itens com data até 7 dias a partir de hoje.
       if (p.dataValidade != null) {
         final diff = p.dataValidade!.difference(DateTime.now()).inDays;
         if (diff <= 7 && !result.contains(p)) result.add(p);
@@ -70,6 +81,7 @@ class _DashboardPageState extends State<DashboardPage> {
     return result.take(6).toList();
   }
 
+  // Calcula top 5 mais vendidos: agrega por nome e ordena por quantidade.
   List<MapEntry<String, double>> get _maisVendidos {
     final map = <String, double>{};
     for (final v in _vendas) {
@@ -82,6 +94,7 @@ class _DashboardPageState extends State<DashboardPage> {
     return sorted.take(5).toList();
   }
 
+  // Gera série de 7 dias (D-6 a Hoje) somando o total de vendas por dia.
   List<double> get _vendasSemana {
     final now = DateTime.now();
     return List.generate(7, (i) {
@@ -95,11 +108,13 @@ class _DashboardPageState extends State<DashboardPage> {
     });
   }
 
+  // Monta o layout do dashboard com refresh, header e seções.
   @override
   Widget build(BuildContext context) {
     final state = AppState();
     final empresa = state.empresa;
 
+    // Placeholder de carregamento enquanto os dados são obtidos.
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -327,6 +342,7 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
+  // Formata data longa em pt-BR para exibir no cabeçalho.
   String _formatDate(DateTime d) {
     const dias = [
       'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'
@@ -338,6 +354,7 @@ class _DashboardPageState extends State<DashboardPage> {
     return '${dias[d.weekday - 1]}, ${d.day} de ${meses[d.month - 1]} de ${d.year}';
   }
 
+  // Retorna o nome do mês usado no resumo de receita.
   String _mesNome(int m) {
     const meses = [
       'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -347,6 +364,7 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 }
 
+// Cartão de métrica reutilizável com ícone, rótulo e valor destacado.
 class _MetricCard extends StatelessWidget {
   final IconData icon;
   final Color bg;
@@ -411,6 +429,7 @@ class _MetricCard extends StatelessWidget {
   }
 }
 
+// Linha de alerta: mostra status do produto e detalhe contextual.
 class _AlertRow extends StatelessWidget {
   final Produto produto;
   const _AlertRow({required this.produto});
@@ -422,6 +441,7 @@ class _AlertRow extends StatelessWidget {
     String subtitle;
     Color bgColor;
 
+    // Regras para definir status, cor e mensagem do alerta conforme a situação.
     if (produto.esgotado) {
       status = 'ESGOTADO';
       statusColor = AppColors.danger;
@@ -483,6 +503,7 @@ class _AlertRow extends StatelessWidget {
   }
 }
 
+// Item do ranking de mais vendidos com posição e barra de progresso.
 class _BestSellerRow extends StatelessWidget {
   final String rank;
   final String name;
@@ -558,17 +579,22 @@ class _BestSellerRow extends StatelessWidget {
   }
 }
 
+// Gráfico de barras das vendas semanais utilizando fl_chart.
 class _VendasChart extends StatelessWidget {
   final List<double> dados;
   const _VendasChart({required this.dados});
 
   @override
   Widget build(BuildContext context) {
+    // Calcula o valor máximo para normalizar a escala do eixo Y.
     final max = dados.isEmpty
         ? 1.0
         : dados.reduce((a, b) => a > b ? a : b);
     final labels = ['D-6', 'D-5', 'D-4', 'D-3', 'D-2', 'Ont.', 'Hoje'];
 
+// Define rótulos para os últimos 7 dias (do mais antigo ao atual).
+
+    // Cria e configura o BarChart: escala, toques, títulos e grupos de barras.
     return BarChart(
       BarChartData(
         maxY: max > 0 ? max * 1.3 : 100,

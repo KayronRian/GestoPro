@@ -5,6 +5,8 @@ import '../services/db_service.dart';
 import '../utils/theme.dart';
 import 'scanner_page.dart';
 
+// StatefulWidget que representa a tela do PDV (caixa).
+// Cria o estado que orquestra carregamento, carrinho e pagamento.
 class CaixaPage extends StatefulWidget {
   const CaixaPage({super.key});
 
@@ -12,14 +14,20 @@ class CaixaPage extends StatefulWidget {
   State<CaixaPage> createState() => _CaixaPageState();
 }
 
+// State que mantém produtos, carrinho, sugestões e etapa atual.
+// Centraliza regras de negócio e interação com serviços.
 class _CaixaPageState extends State<CaixaPage> {
   List<Produto> _produtos = [];
   List<ItemCarrinho> _carrinho = [];
   List<Produto> _sugestoes = [];
+  // Controlador do campo de busca para ler/limpar o texto.
+  // Base para gerar sugestões em tempo real.
   final _buscaCtrl = TextEditingController();
   bool _loading = true;
   int _view = 0; // 0=caixa, 1=carrinho, 2=pagamento
 
+  // Ao iniciar a página, dispara o carregamento dos produtos.
+  // Garante que a lista inicial venha do banco da empresa logada.
   @override
   void initState() {
     super.initState();
@@ -32,6 +40,8 @@ class _CaixaPageState extends State<CaixaPage> {
     super.dispose();
   }
 
+  // Carrega produtos via DbService, usando empresa do AppState.
+  // Filtra itens esgotados e atualiza o estado de loading.
   Future<void> _load() async {
     final prods = await DbService().getProdutos(AppState().empresaId);
     if (mounted) {
@@ -42,6 +52,8 @@ class _CaixaPageState extends State<CaixaPage> {
     }
   }
 
+  // Busca reativa: filtra por nome ou código de barras.
+  // Limita a lista a 8 para manter a usabilidade.
   void _buscar(String q) {
     if (q.isEmpty) {
       setState(() => _sugestoes = []);
@@ -59,6 +71,8 @@ class _CaixaPageState extends State<CaixaPage> {
     });
   }
 
+  // Adiciona ao carrinho ou incrementa se o produto já existir.
+  // Limpa a busca e esvazia as sugestões após a ação.
   void _addProduto(Produto p) {
     setState(() {
       final idx = _carrinho.indexWhere((c) => c.produto.id == p.id);
@@ -72,6 +86,8 @@ class _CaixaPageState extends State<CaixaPage> {
     });
   }
 
+  // Abre o leitor de códigos e recebe o resultado via Navigator.
+  // Consulta o produto e notifica caso não seja encontrado.
   Future<void> _scanCodigo() async {
     final codigo = await Navigator.push<String>(
       context,
@@ -97,12 +113,16 @@ class _CaixaPageState extends State<CaixaPage> {
     }
   }
 
+  // Getter calculado do subtotal somando os subtotais dos itens.
+  // Evita persistir total e previne inconsistências.
   double get _subtotal => _carrinho.fold(0.0, (s, c) => s + c.subtotal);
 
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator());
 
+    // IndexedStack alterna entre caixa, carrinho e pagamento.
+    // Mantém o estado de cada view enquanto muda o índice _view.
     return IndexedStack(
       index: _view,
       children: [
@@ -140,6 +160,8 @@ class _CaixaPageState extends State<CaixaPage> {
     );
   }
 
+  // Diálogo de sucesso exibido após concluir a venda.
+  // Resume total, forma de pagamento e troco quando houver.
   void _showSucesso(BuildContext context, Venda venda) {
     showDialog(
       context: context,
@@ -183,6 +205,8 @@ class _CaixaPageState extends State<CaixaPage> {
     );
   }
 
+  // Mapeia o enum FormaPagamento para rótulos de exibição.
+  // Padroniza textos usados em diferentes telas.
   String _formaPagLabel(FormaPagamento f) {
     switch (f) {
       case FormaPagamento.dinheiro:
@@ -201,6 +225,8 @@ class _CaixaPageState extends State<CaixaPage> {
 
 // ─── Tela principal do caixa ─────────────────────────────────────────────────
 
+// View principal do caixa: busca, scanner, sugestões e lista.
+// Stateless; recebe dados e callbacks do state pai.
 class _CaixaView extends StatelessWidget {
   final List<Produto> produtos;
   final List<ItemCarrinho> carrinho;
@@ -224,6 +250,8 @@ class _CaixaView extends StatelessWidget {
     required this.subtotal,
   });
 
+  // Constrói o layout da view: cabeçalho, busca e conteúdo.
+  // Organiza seções reutilizando o tema da aplicação.
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -315,6 +343,8 @@ class _CaixaView extends StatelessWidget {
           ),
         ),
         if (sugestoes.isNotEmpty)
+          // Sugestões aparecem apenas quando há resultados da busca.
+          // Cada item adiciona o produto ao carrinho ao tocar.
           Container(
             color: Colors.white,
             child: Column(
@@ -334,6 +364,8 @@ class _CaixaView extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
+                // Área chamativa para iniciar o scanner rapidamente.
+                // InkWell fornece feedback visual ao toque.
                 InkWell(
                   onTap: onScan,
                   borderRadius: BorderRadius.circular(24),
@@ -392,6 +424,8 @@ class _CaixaView extends StatelessWidget {
           ),
         ),
         if (carrinho.isNotEmpty)
+          // Barra inferior com subtotal e atalho para o carrinho.
+          // Exibida apenas quando há itens no carrinho.
           Container(
             color: Colors.white,
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
@@ -420,6 +454,8 @@ class _CaixaView extends StatelessWidget {
 }
 
 // ─── Tela do carrinho ─────────────────────────────────────────────────────────
+// Tela do carrinho para revisão antes do pagamento.
+// Recebe callbacks para navegar, pagar e atualizar a lista.
 class _CarrinhoView extends StatelessWidget {
   final List<ItemCarrinho> carrinho;
   final VoidCallback onBack;
@@ -433,6 +469,8 @@ class _CarrinhoView extends StatelessWidget {
     required this.onUpdate,
   });
 
+  // Subtotal local do carrinho calculado com fold.
+  // Reaproveita a regra de totalização sem estado extra.
   double get _subtotal => carrinho.fold(0.0, (s, c) => s + c.subtotal);
 
   @override
@@ -461,6 +499,8 @@ class _CarrinhoView extends StatelessWidget {
           ),
         ),
         Expanded(
+          // Área principal: mostra carrinho vazio ou lista de itens.
+          // Usa ListView.builder para renderização eficiente.
           child: carrinho.isEmpty
               ? Center(
                   child: Column(
@@ -534,6 +574,8 @@ class _CarrinhoView extends StatelessWidget {
                             Row(
                               children: [
                                 IconButton(
+                                  // Diminuir quantidade: decrementa ou remove ao chegar em 1.
+                                  // onUpdate força a atualização visual após a edição.
                                   onPressed: () {
                                     if (item.quantidade > 1) {
                                       item.quantidade--;
@@ -632,6 +674,8 @@ class _CarrinhoView extends StatelessWidget {
 }
 
 // ─── Tela de pagamento ────────────────────────────────────────────────────────
+// Tela de pagamento com resumo, desconto e forma escolhida.
+// Usa onFinalizar para devolver a Venda concluída.
 class _PagamentoView extends StatefulWidget {
   final List<ItemCarrinho> carrinho;
   final double subtotal;
@@ -649,6 +693,8 @@ class _PagamentoView extends StatefulWidget {
   State<_PagamentoView> createState() => _PagamentoViewState();
 }
 
+// State controla forma, desconto, valor recebido e loading.
+// Reatividade via TextEditingController e setState.
 class _PagamentoViewState extends State<_PagamentoView> {
   FormaPagamento _forma = FormaPagamento.dinheiro;
   final _descontoCtrl = TextEditingController(text: '0');
@@ -662,6 +708,8 @@ class _PagamentoViewState extends State<_PagamentoView> {
     super.dispose();
   }
 
+  // Cálculos derivados: desconto (%), total final e troco.
+  // Faz parse das strings tratando vírgula como decimal.
   double get _desconto =>
       double.tryParse(_descontoCtrl.text.replaceAll(',', '.')) ?? 0;
   double get _total => widget.subtotal * (1 - _desconto / 100);
@@ -670,6 +718,8 @@ class _PagamentoViewState extends State<_PagamentoView> {
     return rec - _total;
   }
 
+  // Fluxo de finalização: valida entradas e persiste no DbService.
+  // Exibe aviso se dinheiro recebido for insuficiente.
   Future<void> _finalizar() async {
     if (_total <= 0) return;
     if (_forma == FormaPagamento.dinheiro) {

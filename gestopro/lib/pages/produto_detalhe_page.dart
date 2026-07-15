@@ -6,6 +6,8 @@ import '../utils/theme.dart';
 import 'produto_form_page.dart';
 import 'movimentacao_page.dart';
 
+// Página de detalhes como StatefulWidget para exibir/operar um Produto.
+// Recebe o Produto selecionado via construtor.
 class ProdutoDetalhePage extends StatefulWidget {
   final Produto produto;
   const ProdutoDetalhePage({super.key, required this.produto});
@@ -14,11 +16,17 @@ class ProdutoDetalhePage extends StatefulWidget {
   State<ProdutoDetalhePage> createState() => _ProdutoDetalhePageState();
 }
 
+// State privado que mantém dados atualizados do produto e UI.
+// Controla carregamento e histórico de movimentações.
 class _ProdutoDetalhePageState extends State<ProdutoDetalhePage> {
   late Produto _produto;
+  // Lista das movimentações carregadas do banco para compor o histórico.
   List<Movimentacao> _movs = [];
+  // Flag de carregamento para alternar entre spinner e conteúdo.
   bool _loading = true;
 
+  // initState inicializa o estado local e dispara a carga assíncrona.
+  // Usa o produto vindo do widget como ponto de partida.
   @override
   void initState() {
     super.initState();
@@ -26,12 +34,15 @@ class _ProdutoDetalhePageState extends State<ProdutoDetalhePage> {
     _load();
   }
 
+  // Carrega movimentações e revalida o produto no banco para dados atuais.
+  // Centraliza I/O via DbService e atualiza o estado.
   Future<void> _load() async {
     final db = DbService();
     final movs = await db.getMovimentacoesPorProduto(
         AppState().empresaId, _produto.id);
     final prodAtual = await db.getProdutos(AppState().empresaId);
     final p = prodAtual.where((x) => x.id == _produto.id).firstOrNull;
+    // Protege setState para não atualizar após dispose (checagem de mounted).
     if (mounted) {
       setState(() {
         if (p != null) _produto = p;
@@ -41,6 +52,8 @@ class _ProdutoDetalhePageState extends State<ProdutoDetalhePage> {
     }
   }
 
+  // Fluxo de exclusão: confirma com o usuário, deleta e registra log.
+  // Ao final, volta para a tela anterior.
   Future<void> _deletar() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -59,6 +72,7 @@ class _ProdutoDetalhePageState extends State<ProdutoDetalhePage> {
         ],
       ),
     );
+    // Executa remoção apenas se confirmado e se o widget estiver montado.
     if (confirm == true && mounted) {
       await DbService().deleteProduto(AppState().empresaId, _produto.id);
       await DbService().addLog(
@@ -71,10 +85,12 @@ class _ProdutoDetalhePageState extends State<ProdutoDetalhePage> {
     }
   }
 
+  // build monta o layout reativo; calcula permissões (admin) para ações.
   @override
   Widget build(BuildContext context) {
     final isAdmin = AppState().isAdmin;
 
+    // Retorna o Scaffold com AppBar e corpo rolável dos detalhes.
     return Scaffold(
       appBar: AppBar(
         title: Text(_produto.nome),
@@ -106,6 +122,7 @@ class _ProdutoDetalhePageState extends State<ProdutoDetalhePage> {
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 110),
               child: Column(
                 children: [
+                  // Card com identidade do produto e atributos básicos + status visual.
                   // Card principal
                   AppCard(
                     child: Column(
@@ -184,6 +201,7 @@ class _ProdutoDetalhePageState extends State<ProdutoDetalhePage> {
                   ),
                   const SizedBox(height: 14),
 
+                  // Seção de preços/estoque: cartões de custo e venda para leitura rápida.
                   // Preços e estoque
                   Row(
                     children: [
@@ -238,6 +256,7 @@ class _ProdutoDetalhePageState extends State<ProdutoDetalhePage> {
                   ),
                   const SizedBox(height: 14),
 
+                  // Botões de ação abrem a tela de movimentação (entrada/saída) e recarregam.
                   // Botões de ação
                   Row(
                     children: [
@@ -296,6 +315,7 @@ class _ProdutoDetalhePageState extends State<ProdutoDetalhePage> {
                   ),
                   const SizedBox(height: 14),
 
+                  // Seção de histórico: mostra até 20 últimas movimentações ou mensagem vazia.
                   // Histórico
                   AppCard(
                     child: Column(
@@ -328,6 +348,7 @@ class _ProdutoDetalhePageState extends State<ProdutoDetalhePage> {
   }
 }
 
+// Componente visual que traduz o estado de estoque em um badge de status.
 class _StatusChip extends StatelessWidget {
   final Produto produto;
   const _StatusChip({required this.produto});
@@ -343,6 +364,7 @@ class _StatusChip extends StatelessWidget {
   }
 }
 
+// Linha reutilizável para exibir par "rótulo: valor" com ícone.
 class _InfoRow extends StatelessWidget {
   final String label;
   final String value;
@@ -379,6 +401,7 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
+// Cartão estilizado para destacar valores numéricos e suas legendas.
 class _PriceCard extends StatelessWidget {
   final String label;
   final String value;
@@ -426,12 +449,14 @@ class _PriceCard extends StatelessWidget {
   }
 }
 
+// Item da lista de histórico; representa uma movimentação específica.
 class _MovRow extends StatelessWidget {
   final Movimentacao mov;
   const _MovRow({required this.mov});
 
   @override
   Widget build(BuildContext context) {
+    // Define se é entrada ou saída e ajusta ícones/cores e textos conforme.
     final isEntrada = mov.tipo == TipoMovimentacao.entrada;
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),

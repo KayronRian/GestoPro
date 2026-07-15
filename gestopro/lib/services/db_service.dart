@@ -6,9 +6,13 @@ import '../models/models.dart';
 
 const _uuid = Uuid();
 
+// Função utilitária para gerar hash SHA-256 da senha.
+// Permite comparar credenciais sem armazenar a senha em texto.
 String hashSenha(String senha) =>
     sha256.convert(utf8.encode(senha)).toString();
 
+// Serviço de persistência local baseado em SharedPreferences.
+// Implementa padrão Singleton para acesso único no app.
 class DbService {
   static final DbService _instance = DbService._();
   factory DbService() => _instance;
@@ -17,6 +21,8 @@ class DbService {
   late SharedPreferences _prefs;
   bool _initialized = false;
 
+  // Inicializa o SharedPreferences uma única vez (idempotente).
+  // Deve ser chamado antes das operações de leitura/gravação.
   Future<void> init() async {
     if (_initialized) return;
     _prefs = await SharedPreferences.getInstance();
@@ -45,6 +51,8 @@ class DbService {
     return result;
   }
 
+  // Persiste o usuário e mantém um índice de IDs por empresa.
+  // Garante que o ID entre na lista 'usuarios_{empresaId}'.
   Future<void> saveUsuario(Usuario u) async {
     await _prefs.setString('usuario_${u.id}', u.toJson());
     final ids = _prefs.getStringList('usuarios_${u.empresaId}') ?? [];
@@ -61,6 +69,8 @@ class DbService {
     await _prefs.setStringList('usuarios_$empresaId', ids);
   }
 
+  // Busca usuário por email varrendo chaves 'usuario_*'.
+  // Normaliza para lowerCase para comparação case-insensitive.
   Future<Usuario?> findUsuarioByEmail(String email) async {
     final allKeys = _prefs.getKeys();
     for (final key in allKeys) {
@@ -75,6 +85,8 @@ class DbService {
     return null;
   }
 
+  // Fluxo de login: valida existência/ativo e confere hash da senha.
+  // Atualiza 'ultimoAcesso' e persiste o usuário.
   Future<Usuario?> login(String email, String senha) async {
     final u = await findUsuarioByEmail(email);
     if (u == null || !u.ativo) return null;
@@ -95,6 +107,8 @@ class DbService {
     return result;
   }
 
+  // Salva produto e atualiza o índice 'produtos_{empresaId}'.
+  // Evita duplicidade checando se o ID já está listado.
   Future<void> saveProduto(Produto p) async {
     await _prefs.setString('produto_${p.id}', p.toJson());
     final ids = _prefs.getStringList('produtos_${p.empresaId}') ?? [];
@@ -111,6 +125,8 @@ class DbService {
     await _prefs.setStringList('produtos_$empresaId', ids);
   }
 
+  // Localiza produto pelo código de barras dentro da empresa.
+  // Retorna null se nenhum produto corresponder.
   Future<Produto?> findProdutoPorCodigo(
       String empresaId, String codigo) async {
     final produtos = await getProdutos(empresaId);
@@ -122,6 +138,8 @@ class DbService {
   }
 
   // ─── Movimentações ───────────────────────────────────────────────────────────
+  // Carrega movimentações e ordena por data decrescente.
+  // Facilita exibir as mais recentes primeiro.
   Future<List<Movimentacao>> getMovimentacoes(String empresaId) async {
     final ids = _prefs.getStringList('movs_$empresaId') ?? [];
     final result = <Movimentacao>[];
@@ -139,6 +157,8 @@ class DbService {
     return all.where((m) => m.produtoId == produtoId).toList();
   }
 
+  // Persiste a movimentação e garante seu ID no índice da empresa.
+  // Mantém a relação 'movs_{empresaId}' -> ['id1','id2',...].
   Future<void> saveMovimentacao(Movimentacao m) async {
     await _prefs.setString('mov_${m.id}', m.toJson());
     final ids = _prefs.getStringList('movs_${m.empresaId}') ?? [];
@@ -148,6 +168,8 @@ class DbService {
     }
   }
 
+  // Registra entrada: incrementa estoque e opcionalmente atualiza custo.
+  // Cria Movimentacao de entrada com metadados (NF, fornecedor, etc).
   Future<void> registrarEntrada({
     required String empresaId,
     required Produto produto,
@@ -180,6 +202,8 @@ class DbService {
     await saveMovimentacao(mov);
   }
 
+  // Registra saída: valida estoque suficiente e decrementa quantidade.
+  // Gera Movimentacao de saída e informa sucesso com boolean.
   Future<bool> registrarSaida({
     required String empresaId,
     required Produto produto,
@@ -208,6 +232,8 @@ class DbService {
   }
 
   // ─── Vendas ──────────────────────────────────────────────────────────────────
+  // Lista vendas da empresa e ordena por data desc.
+  // Útil para histórico de PDV.
   Future<List<Venda>> getVendas(String empresaId) async {
     final ids = _prefs.getStringList('vendas_$empresaId') ?? [];
     final result = <Venda>[];
@@ -228,6 +254,8 @@ class DbService {
     }
   }
 
+  // Finaliza venda: calcula subtotal/total, cria itens e salva.
+  // Em seguida baixa estoque item a item e registra movimentações.
   Future<Venda> finalizarVenda({
     required String empresaId,
     required List<ItemCarrinho> carrinho,
@@ -265,6 +293,8 @@ class DbService {
     // Baixar estoque
     for (final item in carrinho) {
       item.produto.qtdEstoque -= item.quantidade;
+      // Proteção para não deixar estoque negativo após baixa.
+      // Se ficar < 0, ajusta para zero antes de salvar.
       if (item.produto.qtdEstoque < 0) item.produto.qtdEstoque = 0;
       await saveProduto(item.produto);
       final mov = Movimentacao(
@@ -296,6 +326,8 @@ class DbService {
     return result;
   }
 
+  // Cria um registro de auditoria com UUID e timestamp.
+  // Persiste o log e adiciona seu ID ao índice 'logs_{empresaId}'.
   Future<void> addLog({
     required String empresaId,
     required String usuarioNome,
@@ -317,11 +349,15 @@ class DbService {
   }
 
   // ─── Setup inicial ───────────────────────────────────────────────────────────
+  // Verifica se já existe algum usuário salvo.
+  // Indica se o setup inicial de admin foi realizado.
   Future<bool> hasAdminSetup() async {
     final keys = _prefs.getKeys();
     return keys.any((k) => k.startsWith('usuario_'));
   }
 
+  // Setup inicial: cria Empresa e um usuário admin vinculado.
+  // Também guarda referências simples do admin em chaves dedicadas.
   Future<void> setupAdmin({
     required String nomeEmpresa,
     required String cnpj,
@@ -377,6 +413,8 @@ class DbService {
     await _prefs.remove('session_empresa_id');
   }
 
+  // Restaura o usuário da sessão a partir do ID salvo.
+  // Retorna null se não houver sessão válida persistida.
   Future<Usuario?> getSessionUser() async {
     final userId = _prefs.getString('session_user_id');
     if (userId == null) return null;
@@ -386,6 +424,8 @@ class DbService {
   }
 
   // ─── Novo usuário ────────────────────────────────────────────────────────────
+  // Fábrica de novo usuário: gera ID, hasheia senha e define role.
+  // Salva imediatamente e retorna a instância criada.
   Future<Usuario> criarUsuario({
     required String empresaId,
     required String nome,

@@ -7,6 +7,7 @@ import 'produto_detalhe_page.dart';
 import 'produto_form_page.dart';
 import 'movimentacao_page.dart';
 
+// Página de Estoque; Stateful para controlar busca, abas e carregamento.
 class EstoquePage extends StatefulWidget {
   const EstoquePage({super.key});
 
@@ -14,19 +15,23 @@ class EstoquePage extends StatefulWidget {
   State<EstoquePage> createState() => _EstoquePageState();
 }
 
+// State com SingleTickerProvider para fornecer vsync ao TabController.
 class _EstoquePageState extends State<EstoquePage>
     with SingleTickerProviderStateMixin {
   List<Produto> _todos = [];
   List<Produto> _filtrados = [];
   bool _loading = true;
   final _buscaCtrl = TextEditingController();
+  // Controlador das 3 abas (todos/baixo/esgotado) associado a este State.
   late TabController _tabCtrl;
   int _tab = 0; // 0=todos, 1=alertas, 2=esgotados
 
+  // initState: configura abas e inicia o carregamento dos produtos.
   @override
   void initState() {
     super.initState();
     _tabCtrl = TabController(length: 3, vsync: this);
+    // Ao mudar de aba, atualiza _tab e reaplica a filtragem.
     _tabCtrl.addListener(() {
       if (!_tabCtrl.indexIsChanging) {
         setState(() {
@@ -38,6 +43,7 @@ class _EstoquePageState extends State<EstoquePage>
     _load();
   }
 
+  // Libera controladores ao descartar a página para evitar leaks.
   @override
   void dispose() {
     _buscaCtrl.dispose();
@@ -45,6 +51,7 @@ class _EstoquePageState extends State<EstoquePage>
     super.dispose();
   }
 
+  // Busca produtos no DbService da empresa atual (AppState.empresaId) e seta estado.
   Future<void> _load() async {
     final db = DbService();
     final produtos = await db.getProdutos(AppState().empresaId);
@@ -57,6 +64,7 @@ class _EstoquePageState extends State<EstoquePage>
     }
   }
 
+  // Regra de negócio da busca: filtra por aba e por texto (nome, código, categoria).
   void _filtrar() {
     final busca = _buscaCtrl.text.toLowerCase();
     List<Produto> base;
@@ -82,6 +90,7 @@ class _EstoquePageState extends State<EstoquePage>
     }
   }
 
+  // Constrói cabeçalho (título, ações, busca, abas) e corpo da lista.
   @override
   Widget build(BuildContext context) {
     final isAdmin = AppState().isAdmin;
@@ -108,6 +117,7 @@ class _EstoquePageState extends State<EstoquePage>
                   if (isAdmin) ...[
                     IconButton(
                       onPressed: () async {
+                        // Abre formulário de novo produto; ao retornar, recarrega os dados.
                         await Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -122,6 +132,7 @@ class _EstoquePageState extends State<EstoquePage>
                   ],
                   IconButton(
                     onPressed: () async {
+                      // Abre tela de movimentação de ENTRADA e atualiza a lista ao voltar.
                       await Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -136,6 +147,7 @@ class _EstoquePageState extends State<EstoquePage>
                   ),
                   IconButton(
                     onPressed: () async {
+                      // Abre tela de movimentação de SAÍDA e atualiza a lista ao voltar.
                       await Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -174,6 +186,7 @@ class _EstoquePageState extends State<EstoquePage>
               ),
               const SizedBox(height: 12),
               // Tabs
+              // Abas com contagens dinâmicas baseadas em _todos e seus estados.
               TabBar(
                 controller: _tabCtrl,
                 labelColor: Colors.white,
@@ -194,6 +207,7 @@ class _EstoquePageState extends State<EstoquePage>
         ),
 
         // Lista
+        // Área da lista: mostra carregando, vazio ou resultados filtrados.
         Expanded(
           child: _loading
               ? const Center(child: CircularProgressIndicator())
@@ -227,6 +241,7 @@ class _EstoquePageState extends State<EstoquePage>
                         ],
                       ),
                     )
+                  // Pull-to-refresh: ao arrastar, chama _load; filhos criados via builder.
                   : RefreshIndicator(
                       onRefresh: _load,
                       child: ListView.builder(
@@ -258,6 +273,7 @@ class _EstoquePageState extends State<EstoquePage>
   }
 }
 
+// Widget de card do produto: visual compacto com status e estoque.
 class _ProdutoCard extends StatelessWidget {
   final Produto produto;
   final VoidCallback onTap;
@@ -269,6 +285,7 @@ class _ProdutoCard extends StatelessWidget {
     Color statusColor;
     String statusLabel;
 
+    // Define rótulo e cor do status conforme esgotado/abaixo do mínimo/ok.
     if (produto.esgotado) {
       statusColor = AppColors.danger;
       statusLabel = 'ESGOTADO';
@@ -280,6 +297,7 @@ class _ProdutoCard extends StatelessWidget {
       statusLabel = 'OK';
     }
 
+    // InkWell dá feedback e aciona onTap para abrir detalhes do produto.
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
@@ -345,6 +363,7 @@ class _ProdutoCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
+                    // Mostra preço de venda formatado em BRL (utilitário formatBRL).
                     formatBRL(produto.precoVenda),
                     style: const TextStyle(
                       color: AppColors.primaryDark,
@@ -358,6 +377,7 @@ class _ProdutoCard extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
+                // Badge exibe o status calculado para rápida identificação do estoque.
                 StatusBadge(label: statusLabel, color: statusColor),
                 const SizedBox(height: 6),
                 Text(
